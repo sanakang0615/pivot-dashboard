@@ -75,22 +75,7 @@ connectDB().catch(err => {
 
 // Middleware
 app.use(cors({
-  origin: function(origin, callback) {
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:3002',
-      'https://pivot-dashboard.vercel.app',
-      'https://pivot-dashboard.vercel.app/',
-      'https://pivot-dashboard-pro.vercel.app',
-      'https://pivot-dashboard-pro.vercel.app/'
-    ];
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization'],
