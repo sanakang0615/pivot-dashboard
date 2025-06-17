@@ -32,7 +32,7 @@ const Analysis = () => {
 
   const fetchAnalysisList = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/list`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses`, {
         headers: {
           'x-user-id': userId
         }
