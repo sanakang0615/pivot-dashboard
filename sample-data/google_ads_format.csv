@@ -1,0 +1,24 @@
+Day,Campaign,Adgroup,Headline,Cost,Impr.,Clicks,Conv.,Conv. value
+2024-01-15,Search_BrandKeywords,Brand_Exact,Best Coffee Roasters | Premium Beans,89.45,4250,125,8,320.00
+2024-01-15,Search_BrandKeywords,Brand_Exact,Artisan Coffee | Free Shipping,76.25,3890,118,6,240.00
+2024-01-15,Search_BrandKeywords,Brand_Broad,Quality Coffee Beans Online,112.80,5620,165,12,480.00
+2024-01-15,Search_GenericKeywords,Coffee_Equipment,Professional Espresso Machines,245.60,8950,285,18,1440.00
+2024-01-15,Search_GenericKeywords,Coffee_Equipment,Home Brewing Kits,198.75,7240,225,14,1120.00
+2024-01-15,Search_GenericKeywords,Coffee_Beans,Organic Single Origin,156.25,6180,185,11,880.00
+2024-01-15,Shopping_Coffee,Shopping_Beans,Ethiopian Coffee - Premium,67.80,2845,98,7,280.00
+2024-01-15,Shopping_Coffee,Shopping_Beans,Colombian Supremo,58.95,2560,85,5,200.00
+2024-01-15,Shopping_Coffee,Shopping_Equipment,Burr Coffee Grinder,134.50,4650,145,9,720.00
+2024-01-16,Search_BrandKeywords,Brand_Exact,Best Coffee Roasters | Premium Beans,85.60,4180,119,7,280.00
+2024-01-16,Search_BrandKeywords,Brand_Exact,Artisan Coffee | Free Shipping,72.25,3720,112,5,200.00
+2024-01-16,Search_BrandKeywords,Brand_Broad,Quality Coffee Beans Online,108.90,5485,158,11,440.00
+2024-01-16,Search_GenericKeywords,Coffee_Equipment,Professional Espresso Machines,235.80,8650,275,16,1280.00
+2024-01-16,Search_GenericKeywords,Coffee_Equipment,Home Brewing Kits,189.50,7050,215,13,1040.00
+2024-01-16,Search_GenericKeywords,Coffee_Beans,Organic Single Origin,148.75,5980,175,10,800.00
+2024-01-16,Shopping_Coffee,Shopping_Beans,Ethiopian Coffee - Premium,65.25,2785,92,6,240.00
+2024-01-16,Shopping_Coffee,Shopping_Beans,Colombian Supremo,56.80,2480,82,4,160.00
+2024-01-16,Shopping_Coffee,Shopping_Equipment,Burr Coffee Grinder,128.95,4520,138,8,640.00
+2024-01-17,Display_Retargeting,Website_Visitors,Return for More Coffee,45.60,12500,145,6,480.00
+2024-01-17,Display_Retargeting,Website_Visitors,Special Offer - 20% Off,52.85,13800,165,8,640.00
+2024-01-17,Display_Retargeting,Cart_Abandoners,Complete Your Purchase,38.95,9850,125,9,720.00
+2024-01-17,Video_YouTube,Coffee_Enthusiasts,How to Brew Perfect Coffee,95.40,25600,385,12,960.00
+2024-01-17,Video_YouTube,Coffee_Enthusiasts,Coffee Origin Stories,87.25,23400,355,10,800.00

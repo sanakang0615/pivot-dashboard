@@ -1,0 +1,9 @@
+@import url('https://cdn.jsdelivr.net/gh/toss/tossface/dist/tossface.css');
+
+* {
+  font-family: 'Pretendard', sans-serif;
+}
+
+.tossface {
+  font-family: Tossface;
+} 

@@ -1,0 +1,61 @@
+{
+  "name": "marketing-analyzer",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@clerk/clerk-react": "^5.32.0",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "@mui/x-data-grid": "^6.19.0",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@toss/react": "^1.8.1",
+    "axios": "^1.6.8",
+    "lodash": "^4.17.21",
+    "lucide-react": "^0.263.1",
+    "papaparse": "^5.4.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.15.0",
+    "react-scripts": "5.0.1",
+    "recharts": "^2.8.0",
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "dev": "concurrently \"npm run backend:dev\" \"npm start\"",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "backend:install": "cd backend && npm install",
+    "install:all": "npm install && npm run backend:install",
+    "setup": "npm run install:all",
+    "clean": "rm -rf node_modules backend/node_modules package-lock.json backend/package-lock.json",
+    "reset": "npm run clean && npm run setup"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
