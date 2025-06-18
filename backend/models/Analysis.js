@@ -10,6 +10,7 @@ const AnalysisSchema = new mongoose.Schema({
   pivotData: { type: Array, default: [] },
   classifiedData: { type: Array, default: [] },
   insights: { type: String, default: '' },
+  heatmapImage: { type: String, default: '' },
   status: { 
     type: String, 
     enum: ['processing', 'completed', 'error'],

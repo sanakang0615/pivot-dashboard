@@ -1289,6 +1289,7 @@ app.get('/api/analysis/:id', async (req, res) => {
         pivotData: analysis.pivotData || [],
         classifiedData: analysis.classifiedData || [],
         insights: analysis.insights || '',
+        heatmapImage: analysis.heatmapImage || '',
         status: analysis.status,
         metadata: analysis.metadata || {},
         createdAt: analysis.createdAt,
@@ -1338,7 +1339,7 @@ app.post('/api/analyze/gemini', async (req, res) => {
 app.post('/api/analysis/save', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
-    const { analysisId, fileName, metadata, pivotTables, insights, createdAt } = req.body;
+    const { analysisId, fileName, metadata, pivotTables, insights, heatmapImage, createdAt } = req.body;
     
     if (!userId) {
       return res.status(401).json({ 
@@ -1377,6 +1378,7 @@ app.post('/api/analysis/save', async (req, res) => {
         metadata: metadata || {},
         pivotData: pivotTables || [],
         insights: insights || '',
+        heatmapImage: heatmapImage || '',
         status: 'completed',
         updatedAt: new Date(),
         ...(createdAt && { createdAt: new Date(createdAt) })

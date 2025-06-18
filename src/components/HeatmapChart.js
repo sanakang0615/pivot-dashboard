@@ -1,7 +1,28 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
-const HeatmapChart = ({ data, title = "성과 히트맵" }) => {
+const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
   const canvasRef = useRef(null);
+
+  // 부모 컴포넌트에서 호출할 수 있는 함수들
+  useImperativeHandle(ref, () => ({
+    getImageAsBase64: () => {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        return canvas.toDataURL('image/png');
+      }
+      return null;
+    },
+    getImageAsBlob: () => {
+      return new Promise((resolve) => {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          canvas.toBlob(resolve, 'image/png');
+        } else {
+          resolve(null);
+        }
+      });
+    }
+  }));
 
   useEffect(() => {
     if (!data || data.length === 0) return;
@@ -172,6 +193,6 @@ const HeatmapChart = ({ data, title = "성과 히트맵" }) => {
       </div>
     </div>
   );
-};
+});
 
 export default HeatmapChart;

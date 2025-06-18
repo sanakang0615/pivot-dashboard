@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/clerk-react';
 import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3 } from 'lucide-react';
@@ -14,6 +14,7 @@ const AnalysisPage = () => {
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [analysisList, setAnalysisList] = useState([]);
+  const heatmapRef = useRef(null);
 
   useEffect(() => {
     if (analysisId && userId && isSignedIn) {
@@ -78,6 +79,59 @@ const AnalysisPage = () => {
     }
     return num ? num.toLocaleString() : '0';
   };
+
+  // 히트맵 이미지를 저장하는 함수
+  const saveHeatmapImage = async () => {
+    if (!heatmapRef.current || !analysisId) return;
+
+    try {
+      // 히트맵을 Base64 이미지로 변환
+      const heatmapImage = heatmapRef.current.getImageAsBase64();
+      
+      if (!heatmapImage) {
+        console.warn('Failed to generate heatmap image');
+        return;
+      }
+
+      // 서버에 히트맵 이미지 저장
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
+        body: JSON.stringify({
+          analysisId: analysisId,
+          fileName: analysis.fileName,
+          metadata: analysis.metadata,
+          pivotTables: analysis.pivotData,
+          insights: analysis.insights,
+          heatmapImage: heatmapImage
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        console.log('✅ Heatmap image saved successfully');
+      } else {
+        console.error('Failed to save heatmap image:', result.error);
+      }
+    } catch (error) {
+      console.error('Error saving heatmap image:', error);
+    }
+  };
+
+  // 분석 데이터가 로드되면 히트맵 이미지 저장
+  useEffect(() => {
+    if (analysis && analysis.pivotData && analysis.pivotData.Campaign && heatmapRef.current) {
+      // 히트맵이 렌더링될 시간을 주기 위해 약간의 지연
+      const timer = setTimeout(() => {
+        saveHeatmapImage();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [analysis, analysisId, userId]);
 
   if (loading) {
     return (
@@ -864,15 +918,14 @@ const AnalysisPage = () => {
             </div>
           )}
 
-          {/* Heatmap */}
-          {analysis.pivotTables?.Campaign && (
+          {/* Performance Heatmap */}
+          {analysis.pivotTables && analysis.pivotTables.Campaign && (
             <div style={{
               background: 'rgba(255, 255, 255, 0.8)',
               backdropFilter: 'blur(20px)',
               borderRadius: '20px',
               border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-              marginBottom: '2rem'
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
             }}>
               <div style={{ padding: '2rem 2rem 1rem' }}>
                 <h3 style={{
@@ -885,7 +938,7 @@ const AnalysisPage = () => {
                   alignItems: 'center',
                   gap: '0.5rem'
                 }}>
-                  <span className="tossface">🌡️</span>
+                  <span className="tossface">🔥</span>
                   Performance Heatmap
                 </h3>
                 <p style={{
@@ -897,10 +950,32 @@ const AnalysisPage = () => {
                 </p>
               </div>
               <div style={{ padding: '0 2rem 2rem' }}>
-                <HeatmapChart 
-                  data={analysis.pivotTables.Campaign}
-                  title="Campaign Performance Heatmap"
-                />
+                {analysis.heatmapImage ? (
+                  // 저장된 히트맵 이미지가 있으면 표시
+                  <div style={{ textAlign: 'center' }}>
+                    <img 
+                      src={analysis.heatmapImage} 
+                      alt="Performance Heatmap"
+                      style={{
+                        maxWidth: '100%',
+                        height: 'auto',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(0, 0, 0, 0.1)'
+                      }}
+                    />
+                    <div className="mt-2 text-sm text-gray-600 text-center">
+                      <p>💡 색상이 진할수록 높은 성과를 나타냅니다</p>
+                      <p>CTR/CVR: 높을수록 좋음 | CPA: 낮을수록 좋음</p>
+                    </div>
+                  </div>
+                ) : (
+                  // 저장된 이미지가 없으면 새로 생성
+                  <HeatmapChart 
+                    ref={heatmapRef}
+                    data={analysis.pivotTables.Campaign}
+                    title="Campaign Performance Heatmap"
+                  />
+                )}
               </div>
             </div>
           )}
