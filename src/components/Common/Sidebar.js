@@ -123,9 +123,9 @@ const Sidebar = ({ analyses, onAnalysisClick, currentAnalysisId }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {analyses.slice(0, 10).map((analysis) => (
               <div
-                key={analysis.id}
-                className={`analysis-item ${analysis.id === currentAnalysisId ? 'active' : ''}`}
-                onClick={() => onAnalysisClick(analysis.id)}
+                key={analysis._id}
+                className={`analysis-item ${analysis._id === currentAnalysisId ? 'active' : ''}`}
+                onClick={() => onAnalysisClick(analysis._id)}
               >
                 <div style={{
                   display: 'flex',
@@ -152,7 +152,7 @@ const Sidebar = ({ analyses, onAnalysisClick, currentAnalysisId }) => {
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <Calendar size={10} />
-                          {formatDate(analysis.uploadDate)}
+                          {formatDate(analysis.createdAt)}
                         </div>
                         
                         <div style={{
@@ -164,19 +164,19 @@ const Sidebar = ({ analyses, onAnalysisClick, currentAnalysisId }) => {
                         }} />
                       </div>
                       
-                      {analysis.rowCount && (
+                      {analysis.fileSize && (
                         <div style={{ 
                           fontSize: '0.65rem', 
                           color: '#9ca3af',
                           marginTop: '0.125rem'
                         }}>
-                          {analysis.rowCount.toLocaleString()} rows
+                          {(analysis.fileSize / 1024).toFixed(1)} KB
                         </div>
                       )}
                     </div>
                   </div>
                   
-                  {analysis.id === currentAnalysisId && (
+                  {analysis._id === currentAnalysisId && (
                     <ChevronRight size={12} color="#84cc16" />
                   )}
                 </div>

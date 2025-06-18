@@ -1418,7 +1418,12 @@ app.get('/api/analysis/list', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     
+    console.log('🔍 /api/analysis/list called');
+    console.log('Headers:', req.headers);
+    console.log('User ID:', userId);
+    
     if (!userId) {
+      console.log('❌ No user ID provided');
       return res.status(401).json({ 
         success: false, 
         error: 'User ID is required' 
@@ -1427,15 +1432,19 @@ app.get('/api/analysis/list', async (req, res) => {
 
     // Check if Analysis model and database are available
     if (!Analysis || mongoose.connection.readyState !== 1) {
+      console.log('❌ Database not available');
       return res.json({
         success: true,
         analyses: []
       });
     }
 
+    console.log('✅ Fetching analyses for user:', userId);
     const analyses = await Analysis.find({ userId })
       .sort({ createdAt: -1 })
       .select('_id fileName fileSize createdAt updatedAt status');
+
+    console.log('✅ Found', analyses.length, 'analyses');
 
     res.json({
       success: true,
@@ -1449,10 +1458,11 @@ app.get('/api/analysis/list', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching analyses:', error);
+    console.error('❌ Error fetching analyses:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to fetch analyses'
+      error: 'Failed to fetch analyses',
+      details: error.message
     });
   }
 });

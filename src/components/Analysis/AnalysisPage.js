@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/clerk-react';
 import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 import HeatmapChart from '../HeatmapChart';
 
 const AnalysisPage = () => {
@@ -15,6 +16,15 @@ const AnalysisPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [analysisList, setAnalysisList] = useState([]);
   const heatmapRef = useRef(null);
+
+  // Clerk 인증 상태 디버깅
+  useEffect(() => {
+    console.log('🔐 Clerk Auth State:', {
+      userId,
+      isSignedIn,
+      analysisId
+    });
+  }, [userId, isSignedIn, analysisId]);
 
   useEffect(() => {
     if (analysisId && userId && isSignedIn) {
@@ -59,17 +69,38 @@ const AnalysisPage = () => {
 
   const fetchAnalysisList = async () => {
     try {
+      console.log('🔍 Fetching analysis list for user:', userId);
+      
+      if (!userId) {
+        console.error('❌ No user ID available');
+        return;
+      }
+
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/list`, {
         headers: {
-          'x-user-id': userId
+          'x-user-id': userId,
+          'Content-Type': 'application/json'
         }
       });
+
+      console.log('📡 Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Response not ok:', response.status, errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const result = await response.json();
+      console.log('📊 Analysis list result:', result);
+      
       if (result.success) {
         setAnalysisList(result.analyses || []);
+      } else {
+        console.error('❌ API returned error:', result.error);
       }
     } catch (error) {
-      console.error('Failed to fetch analysis list:', error);
+      console.error('❌ Failed to fetch analysis list:', error);
     }
   };
 
@@ -681,36 +712,43 @@ const AnalysisPage = () => {
                       alignItems: 'center',
                       gap: '0.75rem',
                       padding: '0.75rem 1rem',
-                      background: analysisItem.id === analysisId 
+                      background: analysisItem._id === analysisId 
                         ? 'linear-gradient(135deg, #667eea20, #764ba220)'
                         : 'rgba(255, 255, 255, 0.7)',
-                      border: analysisItem.id === analysisId 
+                      border: analysisItem._id === analysisId 
                         ? '2px solid rgba(102, 126, 234, 0.3)'
                         : '1px solid rgba(255, 255, 255, 0.3)',
                       borderRadius: '10px',
                       cursor: 'pointer',
                       transition: 'all 0.2s ease'
                     }}
-                    onClick={() => navigate(`/analysis/${analysisItem.id}`)}
+                    onClick={() => {
+                      console.log('Clicked analysis:', analysisItem);
+                      if (analysisItem._id) {
+                        navigate(`/analysis/${analysisItem._id}`);
+                      } else {
+                        alert('분석 ID가 없습니다!');
+                      }
+                    }}
                     onMouseEnter={(e) => {
-                      if (analysisItem.id !== analysisId) {
+                      if (analysisItem._id !== analysisId) {
                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
                         e.currentTarget.style.transform = 'translateX(4px)';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (analysisItem.id !== analysisId) {
+                      if (analysisItem._id !== analysisId) {
                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)';
                         e.currentTarget.style.transform = 'translateX(0)';
                       }
                     }}
                   >
-                    <FileText size={16} color={analysisItem.id === analysisId ? "#667eea" : "#64748b"} />
+                    <FileText size={16} color={analysisItem._id === analysisId ? "#667eea" : "#64748b"} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{
                         fontSize: '0.85rem',
-                        fontWeight: analysisItem.id === analysisId ? '600' : '500',
-                        color: analysisItem.id === analysisId ? '#667eea' : '#374151',
+                        fontWeight: analysisItem._id === analysisId ? '600' : '500',
+                        color: analysisItem._id === analysisId ? '#667eea' : '#374151',
                         margin: 0,
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -726,7 +764,7 @@ const AnalysisPage = () => {
                         {new Date(analysisItem.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    {analysisItem.id !== analysisId && <ArrowRight size={14} color="#64748b" />}
+                    {analysisItem._id !== analysisId && <ArrowRight size={14} color="#64748b" />}
                   </div>
                 ))
               )}
@@ -1024,7 +1062,75 @@ const AnalysisPage = () => {
                     lineHeight: '1.7',
                     fontSize: '0.95rem'
                   }}>
-                    {analysis.insights}
+                    <ReactMarkdown
+                      className="tossface"
+                      components={{
+                        h1: ({children}) => <h1 style={{
+                          fontSize: '1.5rem',
+                          fontWeight: '700',
+                          color: '#1e293b',
+                          margin: '1.5rem 0 1rem 0',
+                          borderBottom: '2px solid rgba(102, 126, 234, 0.2)',
+                          paddingBottom: '0.5rem'
+                        }}>{children}</h1>,
+                        h2: ({children}) => <h2 style={{
+                          fontSize: '1.25rem',
+                          fontWeight: '600',
+                          color: '#1e293b',
+                          margin: '1.25rem 0 0.75rem 0'
+                        }}>{children}</h2>,
+                        h3: ({children}) => <h3 style={{
+                          fontSize: '1.1rem',
+                          fontWeight: '600',
+                          color: '#374151',
+                          margin: '1rem 0 0.5rem 0'
+                        }}>{children}</h3>,
+                        p: ({children}) => <p style={{
+                          margin: '0.75rem 0',
+                          lineHeight: '1.7'
+                        }}>{children}</p>,
+                        ul: ({children}) => <ul style={{
+                          margin: '0.75rem 0',
+                          paddingLeft: '1.5rem'
+                        }}>{children}</ul>,
+                        ol: ({children}) => <ol style={{
+                          margin: '0.75rem 0',
+                          paddingLeft: '1.5rem'
+                        }}>{children}</ol>,
+                        li: ({children}) => <li style={{
+                          margin: '0.25rem 0',
+                          lineHeight: '1.6'
+                        }}>{children}</li>,
+                        strong: ({children}) => <strong style={{
+                          fontWeight: '600',
+                          color: '#1e293b'
+                        }}>{children}</strong>,
+                        em: ({children}) => <em style={{
+                          fontStyle: 'italic',
+                          color: '#475569'
+                        }}>{children}</em>,
+                        code: ({children}) => <code style={{
+                          background: 'rgba(102, 126, 234, 0.1)',
+                          padding: '0.2rem 0.4rem',
+                          borderRadius: '4px',
+                          fontSize: '0.85rem',
+                          fontFamily: 'monospace',
+                          color: '#667eea'
+                        }}>{children}</code>,
+                        blockquote: ({children}) => <blockquote style={{
+                          borderLeft: '4px solid rgba(102, 126, 234, 0.3)',
+                          paddingLeft: '1rem',
+                          margin: '1rem 0',
+                          fontStyle: 'italic',
+                          color: '#475569',
+                          background: 'rgba(102, 126, 234, 0.05)',
+                          padding: '1rem',
+                          borderRadius: '8px'
+                        }}>{children}</blockquote>
+                      }}
+                    >
+                      {analysis.insights}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </div>
