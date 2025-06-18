@@ -1334,6 +1334,127 @@ app.post('/api/analyze/gemini', async (req, res) => {
   }
 });
 
+// Save analysis results
+app.post('/api/analysis/save', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const { analysisId, fileName, metadata, pivotTables, insights, createdAt } = req.body;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    if (!analysisId || !fileName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Analysis ID and fileName are required'
+      });
+    }
+
+    // Check if Analysis model and database are available
+    if (!Analysis || mongoose.connection.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        error: 'Database not available'
+      });
+    }
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(analysisId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid analysis ID'
+      });
+    }
+
+    const analysis = await Analysis.findOneAndUpdate(
+      { _id: analysisId, userId },
+      { 
+        fileName,
+        metadata: metadata || {},
+        pivotData: pivotTables || [],
+        insights: insights || '',
+        status: 'completed',
+        updatedAt: new Date(),
+        ...(createdAt && { createdAt: new Date(createdAt) })
+      },
+      { new: true }
+    );
+
+    if (!analysis) {
+      return res.status(404).json({
+        success: false,
+        error: 'Analysis not found'
+      });
+    }
+
+    console.log('✅ Analysis saved:', analysisId);
+    res.json({
+      success: true,
+      analysis: {
+        _id: analysis._id,
+        fileName: analysis.fileName,
+        status: analysis.status,
+        updatedAt: analysis.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error saving analysis:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save analysis',
+      details: error.message
+    });
+  }
+});
+
+// Get analysis list (alias for /api/analyses)
+app.get('/api/analysis/list', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    // Check if Analysis model and database are available
+    if (!Analysis || mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        analyses: []
+      });
+    }
+
+    const analyses = await Analysis.find({ userId })
+      .sort({ createdAt: -1 })
+      .select('_id fileName fileSize createdAt updatedAt status');
+
+    res.json({
+      success: true,
+      analyses: analyses.map(analysis => ({
+        _id: analysis._id,
+        fileName: analysis.fileName,
+        fileSize: analysis.fileSize,
+        createdAt: analysis.createdAt,
+        updatedAt: analysis.updatedAt,
+        status: analysis.status
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching analyses:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch analyses'
+    });
+  }
+});
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Server Error:', error);
