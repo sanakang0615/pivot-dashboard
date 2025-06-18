@@ -75,12 +75,10 @@ connectDB().catch(err => {
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://pivot-dashboard.vercel.app', 'http://localhost:3000']
-    : '*',
+  origin: true, // Allow all origins temporarily for debugging
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization', 'Origin', 'Accept'],
   exposedHeaders: ['Content-Type', 'x-user-id'],
   maxAge: 86400 // 24 hours
 }));
@@ -89,6 +87,7 @@ app.use(cors({
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
   console.log('Request headers:', req.headers);
+  console.log('Origin:', req.headers.origin);
   next();
 });
 
