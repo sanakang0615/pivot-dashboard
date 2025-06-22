@@ -416,7 +416,6 @@ const Sidebar = ({ isOpen, onClose }) => {
             right: 0,
             bottom: 0,
             background: 'rgba(0,0,0,0.2)',
-            backdropFilter: 'blur(4px)',
             zIndex: 10001
           }}
         />

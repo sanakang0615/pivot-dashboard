@@ -40,21 +40,6 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
     }
   }, [inputValue]);
 
-  // Keyboard shortcut for toggling chat sidebar
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'i') {
-        event.preventDefault();
-        onClose(); // Toggle by calling onClose
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [onClose]);
-
   const loadChatHistory = async () => {
     try {
       const analysisId = analysisData?._id || analysisData?.analysisId;

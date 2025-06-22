@@ -35,12 +35,17 @@ const AnalysisPage = () => {
     scale: 1.1
   });
 
+  const handleChatSidebarClose = () => {
+    setChatSidebarOpen(false);
+  };
+
   // Keyboard shortcut for opening chat
   useEffect(() => {
     const handleKeyDown = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'i') {
         event.preventDefault();
-        setChatSidebarOpen(true);
+        // Toggle chat sidebar
+        setChatSidebarOpen(!chatSidebarOpen);
       }
       if ((event.metaKey || event.ctrlKey) && event.key === 'l') {
         event.preventDefault();
@@ -52,7 +57,7 @@ const AnalysisPage = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [sidebarOpen]);
+  }, [sidebarOpen, chatSidebarOpen]);
 
   // Clerk 인증 상태 디버깅
   useEffect(() => {
@@ -515,7 +520,7 @@ const AnalysisPage = () => {
       />
       <ChatSidebar 
         isOpen={chatSidebarOpen} 
-        onClose={() => setChatSidebarOpen(false)} 
+        onClose={handleChatSidebarClose} 
         analysisData={analysis}
       />
       {/* Global Auth Header */}
