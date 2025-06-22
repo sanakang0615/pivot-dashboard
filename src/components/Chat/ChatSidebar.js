@@ -96,23 +96,55 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
     setIsLoading(true);
 
     try {
+      // Prepare the request body
+      const requestBody = {
+        message: userMessage.content,
+        contexts: userMessage.contexts,
+        analysisData: sanitizeAnalysisData(analysisData),
+        chatHistory: messages.slice(-10) // Last 10 messages for context
+      };
+
+      // Log the complete prompt being sent to Gemini API
+      console.log('🚀 Sending to Gemini API:');
+      console.log('📝 User Message:', requestBody.message);
+      console.log('🔗 Selected Contexts:', requestBody.contexts.map(c => c.name));
+      console.log('📊 Analysis Data:', requestBody.analysisData);
+      console.log('💬 Chat History:', requestBody.chatHistory.length, 'messages');
+      console.log('📦 Full Request Body:', JSON.stringify(requestBody, null, 2));
+
+      // Validate request body before sending
+      if (!requestBody.message || typeof requestBody.message !== 'string') {
+        throw new Error('Invalid message format');
+      }
+
+      // Check if request body can be serialized
+      try {
+        JSON.stringify(requestBody);
+      } catch (serializeError) {
+        console.error('❌ Request body serialization error:', serializeError);
+        throw new Error('Request body contains invalid data that cannot be serialized');
+      }
+
       // Send to Gemini API
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/chat/send`, {
+      const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/chat/send`;
+      console.log('🌐 Sending request to:', apiUrl);
+      console.log('🔧 REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'x-user-id': userId,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          message: userMessage.content,
-          contexts: userMessage.contexts,
-          analysisData: analysisData,
-          chatHistory: messages.slice(-10) // Last 10 messages for context
-        })
+        body: JSON.stringify(requestBody)
       });
+
+      console.log('📡 Response status:', response.status, response.statusText);
 
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ API Response:', result);
+        
         if (result.success) {
           const aiMessage = {
             id: Date.now() + 1,
@@ -124,16 +156,35 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
           const finalMessages = [...newMessages, aiMessage];
           setMessages(finalMessages);
           saveChatHistory(finalMessages);
+        } else {
+          throw new Error(result.error || 'API returned success: false');
         }
       } else {
-        throw new Error('Failed to get AI response');
+        // Log detailed error information
+        const errorText = await response.text();
+        console.error('❌ API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        });
+        
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.error || errorJson.details || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use the text as is
+          errorMessage = errorText || errorMessage;
+        }
+        
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Chat error:', error);
       const errorMessage = {
         id: Date.now() + 1,
         type: 'error',
-        content: 'Sorry, I encountered an error. Please try again.',
+        content: `Sorry, I encountered an error: ${error.message}`,
         timestamp: new Date().toISOString()
       };
       const finalMessages = [...newMessages, errorMessage];
@@ -152,24 +203,6 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
 
   const handleContextSelect = (context) => {
     const isAdding = !selectedContexts.some(c => c.id === context.id);
-
-    if (isAdding) {
-      console.log(`[Context Added] ✅ ${context.name}`);
-      let contextText = `\n${context.name}:\n`;
-      if (context.type === 'data' || context.type === 'pivot') {
-        const limitedData = Array.isArray(context.data) 
-          ? context.data.slice(0, 20)
-          : context.data;
-        contextText += JSON.stringify(limitedData, null, 2);
-      } else if (context.type === 'report') {
-        contextText += context.data;
-      } else if (context.type === 'visualization') {
-        contextText += `Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`;
-      }
-      console.log('📋 Text to be added to prompt:', contextText);
-    } else {
-      console.log(`[Context Removed] ❌ ${context.name}`);
-    }
     
     setSelectedContexts(prev => {
       const exists = prev.find(c => c.id === context.id);
@@ -184,6 +217,44 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
 
   const removeContext = (contextId) => {
     setSelectedContexts(prev => prev.filter(c => c.id !== contextId));
+  };
+
+  // Sanitize analysisData to prevent serialization issues
+  const sanitizeAnalysisData = (data) => {
+    if (!data) return null;
+    
+    try {
+      // Create a clean copy with only essential fields
+      const sanitized = {
+        _id: data._id || data.analysisId,
+        fileName: data.fileName,
+        status: data.status,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        metadata: data.metadata ? {
+          rowCount: data.metadata.rowCount,
+          columnCount: data.metadata.columnCount,
+          fileSize: data.metadata.fileSize
+        } : null
+      };
+      
+      // Only include these fields if they exist and are not too large
+      if (data.pivotData && typeof data.pivotData === 'object') {
+        sanitized.pivotData = 'pivot_data_available';
+      }
+      
+      if (data.insights && typeof data.insights === 'string' && data.insights.length < 1000) {
+        sanitized.insights = data.insights;
+      }
+      
+      return sanitized;
+    } catch (error) {
+      console.warn('Failed to sanitize analysisData:', error);
+      return {
+        _id: data._id || data.analysisId,
+        fileName: data.fileName || 'Unknown'
+      };
+    }
   };
 
   if (!isOpen) return null;

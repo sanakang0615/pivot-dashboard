@@ -1487,115 +1487,20 @@ app.get('/api/analysis/list', async (req, res) => {
 
 // ===== CHAT API ENDPOINTS =====
 
-// Get chat history for an analysis
-app.get('/api/chat/:analysisId', async (req, res) => {
-  try {
-    const userId = req.headers['x-user-id'];
-    const { analysisId } = req.params;
-    
-    if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
-        error: 'User ID is required' 
-      });
-    }
-
-    if (!analysisId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Analysis ID is required'
-      });
-    }
-
-    console.log('📬 Loading chat history for:', { userId, analysisId });
-
-    // Check if Chat model and database are available
-    if (!Chat || mongoose.connection.readyState !== 1) {
-      return res.json({
-        success: true,
-        messages: []
-      });
-    }
-
-    const chat = await Chat.findOne({ 
-      userId, 
-      analysisId 
-    });
-
-    res.json({
-      success: true,
-      messages: chat ? chat.messages : []
-    });
-  } catch (error) {
-    console.error('Error loading chat history:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load chat history',
-      details: error.message
-    });
-  }
-});
-
-// Save chat history for an analysis
-app.post('/api/chat/:analysisId', async (req, res) => {
-  try {
-    const userId = req.headers['x-user-id'];
-    const { analysisId } = req.params;
-    const { messages } = req.body;
-    
-    if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
-        error: 'User ID is required' 
-      });
-    }
-
-    if (!analysisId || !Array.isArray(messages)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Analysis ID and messages array are required'
-      });
-    }
-
-    console.log('💾 Saving chat history for:', { userId, analysisId, messageCount: messages.length });
-
-    // Check if Chat model and database are available
-    if (!Chat || mongoose.connection.readyState !== 1) {
-      return res.json({
-        success: true,
-        message: 'Chat history saved (in memory only - database not available)'
-      });
-    }
-
-    await Chat.findOneAndUpdate(
-      { userId, analysisId },
-      { 
-        messages,
-        updatedAt: new Date()
-      },
-      { 
-        upsert: true,
-        new: true
-      }
-    );
-
-    console.log('✅ Chat history saved successfully');
-    res.json({
-      success: true,
-      message: 'Chat history saved successfully'
-    });
-  } catch (error) {
-    console.error('Error saving chat history:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to save chat history',
-      details: error.message
-    });
-  }
+// Debug middleware for chat routes
+app.use('/api/chat/*', (req, res, next) => {
+  console.log('🔍 Chat route debug:', {
+    method: req.method,
+    url: req.url,
+    path: req.path,
+    originalUrl: req.originalUrl
+  });
+  next();
 });
 
 // Send message to Gemini AI
 app.post('/api/chat/send', async (req, res) => {
+  console.log('🎯 HIT: /api/chat/send route');
   try {
     const userId = req.headers['x-user-id'];
     const { message, contexts, analysisData, chatHistory } = req.body;
@@ -1730,6 +1635,114 @@ User's question: ${message}
     res.status(500).json({
       success: false,
       error: 'Failed to process chat message',
+      details: error.message
+    });
+  }
+});
+
+// Get chat history for an analysis
+app.get('/api/chat/:analysisId', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const { analysisId } = req.params;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    if (!analysisId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Analysis ID is required'
+      });
+    }
+
+    console.log('📬 Loading chat history for:', { userId, analysisId });
+
+    // Check if Chat model and database are available
+    if (!Chat || mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        messages: []
+      });
+    }
+
+    const chat = await Chat.findOne({ 
+      userId, 
+      analysisId 
+    });
+
+    res.json({
+      success: true,
+      messages: chat ? chat.messages : []
+    });
+  } catch (error) {
+    console.error('Error loading chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load chat history',
+      details: error.message
+    });
+  }
+});
+
+// Save chat history for an analysis
+app.post('/api/chat/:analysisId', async (req, res) => {
+  console.log('🎯 HIT: /api/chat/:analysisId route with analysisId:', req.params.analysisId);
+  try {
+    const userId = req.headers['x-user-id'];
+    const { analysisId } = req.params;
+    const { messages } = req.body;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    if (!analysisId || !Array.isArray(messages)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Analysis ID and messages array are required'
+      });
+    }
+
+    console.log('💾 Saving chat history for:', { userId, analysisId, messageCount: messages.length });
+
+    // Check if Chat model and database are available
+    if (!Chat || mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        message: 'Chat history saved (in memory only - database not available)'
+      });
+    }
+
+    await Chat.findOneAndUpdate(
+      { userId, analysisId },
+      { 
+        messages,
+        updatedAt: new Date()
+      },
+      { 
+        upsert: true,
+        new: true
+      }
+    );
+
+    console.log('✅ Chat history saved successfully');
+    res.json({
+      success: true,
+      message: 'Chat history saved successfully'
+    });
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save chat history',
       details: error.message
     });
   }
