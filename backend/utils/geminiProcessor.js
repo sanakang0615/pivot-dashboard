@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Marketing analysis prompt template
 const MARKETING_ANALYSIS_PROMPT = `You are a performance marketing data analysis assistant. The input CSV may have columns similar to 'Date, Campaign, Ad Set, Ad, Cost, Impression, Click, Purchase, Revenue', but column names may not match exactly.
-
+줘
 Your tasks:
 
 1. **Pivot Table Generation**

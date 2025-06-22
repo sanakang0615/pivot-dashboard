@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/clerk-react';
-import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3, Loader2 } from 'lucide-react';
+import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3, Loader2, MessageCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { usePDF } from 'react-to-pdf';
 import HeatmapChart from '../HeatmapChart';
 import Sidebar from '../Common/Sidebar';
+import ChatSidebar from '../Chat/ChatSidebar';
 
 const AnalysisPage = () => {
   const { analysisId } = useParams();
@@ -16,6 +17,7 @@ const AnalysisPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
   const [analysisList, setAnalysisList] = useState([]);
   const [exporting, setExporting] = useState(false);
   const heatmapRef = useRef(null);
@@ -32,6 +34,21 @@ const AnalysisPage = () => {
     // Scale up the PDF content to make it larger
     scale: 1.1
   });
+
+  // Keyboard shortcut for opening chat
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'i') {
+        event.preventDefault();
+        setChatSidebarOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // Clerk 인증 상태 디버깅
   useEffect(() => {
@@ -531,6 +548,11 @@ const AnalysisPage = () => {
       position: 'relative'
     }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <ChatSidebar 
+        isOpen={chatSidebarOpen} 
+        onClose={() => setChatSidebarOpen(false)} 
+        analysisData={analysis}
+      />
       {/* Global Auth Header */}
       <div style={{
         width: '100%',
@@ -642,30 +664,43 @@ const AnalysisPage = () => {
           gap: '1rem' 
         }}>
           <button
+            onClick={() => setChatSidebarOpen(true)}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
               padding: '0.5rem 1rem',
-              background: 'rgba(255, 255, 255, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
-              color: '#374151',
+              color: 'white',
               fontSize: '0.9rem',
-              fontWeight: '500',
-              backdropFilter: 'blur(10px)',
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.25)',
               transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+              e.target.style.transform = 'translateY(-1px)';
+              e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.35)';
             }}
             onMouseLeave={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.8)';
+              e.target.style.transform = 'translateY(0)';
+              e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.25)';
             }}
           >
-            <Share2 size={16} />
-            Share
+            <MessageCircle size={16} />
+            New Chat
+            <span style={{
+              fontSize: '0.8rem',
+              opacity: 0.8,
+              marginLeft: '0.25rem',
+              padding: '0.1rem 0.4rem',
+              background: 'rgba(255, 255, 255, 0.2)',
+              borderRadius: '4px'
+            }}>
+              ⌘I
+            </span>
           </button>
 
           <button

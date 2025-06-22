@@ -1,0 +1,267 @@
+/* Chat Sidebar Animations and Styles */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40%, 43% {
+    transform: translateY(-8px);
+  }
+  70% {
+    transform: translateY(-4px);
+  }
+  90% {
+    transform: translateY(-2px);
+  }
+}
+
+/* Chat Sidebar */
+.chat-sidebar {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.chat-sidebar.closing {
+  animation: slideOutRight 0.3s ease-in;
+}
+
+/* Message Animations */
+.chat-message {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.chat-message.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Loading Animations */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+/* Context Selector Animations */
+.context-selector {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.context-option {
+  transition: all 0.2s ease;
+}
+
+.context-option:hover {
+  transform: translateY(-1px);
+}
+
+/* Message Bubble Hover Effects */
+.message-bubble {
+  transition: all 0.2s ease;
+}
+
+.message-bubble:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Hover Effects */
+.chat-button {
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-button:hover {
+  transform: translateY(-1px);
+}
+
+.chat-button:active {
+  transform: translateY(0);
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.typing-dots {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #667eea;
+  animation: bounce 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0;
+}
+
+/* Scrollbar Styling */
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .chat-sidebar {
+    background: rgba(30, 30, 30, 0.95);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .message-bubble.user {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+  
+  .message-bubble.ai {
+    background: rgba(50, 50, 50, 0.9);
+    color: #e2e8f0;
+  }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .chat-sidebar {
+    width: 100vw;
+    right: 0;
+  }
+  
+  .chat-message {
+    max-width: 90%;
+  }
+  
+  .context-selector {
+    margin: 0 1rem;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .chat-sidebar {
+    border-left: 2px solid #000;
+  }
+  
+  .message-bubble {
+    border: 1px solid #000;
+  }
+  
+  .chat-button {
+    border: 1px solid #000;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .chat-sidebar,
+  .chat-message,
+  .context-selector,
+  .message-bubble,
+  .chat-button {
+    animation: none;
+    transition: none;
+  }
+  
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce {
+    animation: none;
+  }
+}
+
+/* Focus indicators for accessibility */
+.chat-button:focus,
+.context-option:focus,
+textarea:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Print styles */
+@media print {
+  .chat-sidebar {
+    display: none;
+  }
+} 

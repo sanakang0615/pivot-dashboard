@@ -14,10 +14,12 @@ const PORT = process.env.PORT || 3001;
 
 // Import models and utilities with error handling
 let Analysis;
+let Chat;
 let processRawData, createPivotTable, classifyPerformance;
 
 try {
   Analysis = require('./models/Analysis');
+  Chat = require('./models/Chat');
   const dataProcessor = require('../src/utils/dataProcessor');
   processRawData = dataProcessor.processRawData;
   createPivotTable = dataProcessor.createPivotTable;
@@ -1482,6 +1484,332 @@ app.get('/api/analysis/list', async (req, res) => {
     });
   }
 });
+
+// ===== CHAT API ENDPOINTS =====
+
+// Get chat history for an analysis
+app.get('/api/chat/:analysisId', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const { analysisId } = req.params;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    if (!analysisId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Analysis ID is required'
+      });
+    }
+
+    console.log('📬 Loading chat history for:', { userId, analysisId });
+
+    // Check if Chat model and database are available
+    if (!Chat || mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        messages: []
+      });
+    }
+
+    const chat = await Chat.findOne({ 
+      userId, 
+      analysisId 
+    });
+
+    res.json({
+      success: true,
+      messages: chat ? chat.messages : []
+    });
+  } catch (error) {
+    console.error('Error loading chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load chat history',
+      details: error.message
+    });
+  }
+});
+
+// Save chat history for an analysis
+app.post('/api/chat/:analysisId', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const { analysisId } = req.params;
+    const { messages } = req.body;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    if (!analysisId || !Array.isArray(messages)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Analysis ID and messages array are required'
+      });
+    }
+
+    console.log('💾 Saving chat history for:', { userId, analysisId, messageCount: messages.length });
+
+    // Check if Chat model and database are available
+    if (!Chat || mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        message: 'Chat history saved (in memory only - database not available)'
+      });
+    }
+
+    await Chat.findOneAndUpdate(
+      { userId, analysisId },
+      { 
+        messages,
+        updatedAt: new Date()
+      },
+      { 
+        upsert: true,
+        new: true
+      }
+    );
+
+    console.log('✅ Chat history saved successfully');
+    res.json({
+      success: true,
+      message: 'Chat history saved successfully'
+    });
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save chat history',
+      details: error.message
+    });
+  }
+});
+
+// Send message to Gemini AI
+app.post('/api/chat/send', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const { message, contexts, analysisData, chatHistory } = req.body;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'Message is required'
+      });
+    }
+
+    console.log('🤖 Processing chat message:', {
+      userId,
+      messageLength: message.length,
+      contextCount: contexts ? contexts.length : 0,
+      hasAnalysisData: !!analysisData,
+      chatHistoryLength: chatHistory ? chatHistory.length : 0
+    });
+
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    
+    if (!GEMINI_API_KEY) {
+      console.log('No Gemini API key found, using fallback response');
+      return res.json({
+        success: true,
+        response: "I'm sorry, but I need a valid API key to provide intelligent responses. Please check your configuration and try again."
+      });
+    }
+
+    // Build context for Gemini
+    let fullPrompt = `You are an AI assistant specialized in marketing data analysis. You have access to campaign performance data and should provide helpful insights, answer questions, and make recommendations based on the data provided.
+
+User's question: ${message}
+
+`;
+
+    // Add analysis context if provided
+    if (analysisData) {
+      fullPrompt += `\nAnalysis Context:
+- File: ${analysisData.fileName || 'Unknown'}
+- Total rows: ${analysisData.metadata?.rowCount || 'Unknown'}
+- Created: ${analysisData.createdAt ? new Date(analysisData.createdAt).toLocaleDateString() : 'Unknown'}
+
+`;
+    }
+
+    // Add specific data contexts if selected
+    if (contexts && contexts.length > 0) {
+      fullPrompt += `\nSpecific Data Context:\n`;
+      
+      contexts.forEach(context => {
+        fullPrompt += `\n${context.name}:\n`;
+        
+        if (context.type === 'data' || context.type === 'pivot') {
+          // Limit data size for API call
+          const limitedData = Array.isArray(context.data) 
+            ? context.data.slice(0, 20)
+            : context.data;
+          fullPrompt += JSON.stringify(limitedData, null, 2);
+        } else if (context.type === 'report') {
+          fullPrompt += context.data;
+        } else if (context.type === 'visualization') {
+          fullPrompt += `Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`;
+        }
+        fullPrompt += '\n';
+      });
+    }
+
+    // Add recent chat history for context
+    if (chatHistory && chatHistory.length > 0) {
+      fullPrompt += `\nRecent conversation history:\n`;
+      chatHistory.forEach(msg => {
+        fullPrompt += `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+      });
+    }
+
+    fullPrompt += `\nPlease provide a helpful, accurate response based on the data and context provided. Use markdown formatting for better readability. Focus on actionable insights and specific recommendations when possible.`;
+
+    console.log('📤 Sending request to Gemini API...');
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: fullPrompt
+          }]
+        }],
+        generationConfig: {
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 2048,
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Gemini API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorText
+      });
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('📥 Received Gemini API response');
+
+    const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!aiResponse) {
+      throw new Error('No response generated from Gemini API');
+    }
+
+    res.json({
+      success: true,
+      response: aiResponse
+    });
+  } catch (error) {
+    console.error('Chat API error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process chat message',
+      details: error.message
+    });
+  }
+});
+
+// Delete chat history for an analysis
+app.delete('/api/chat/:analysisId', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    const { analysisId } = req.params;
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    // Check if Chat model and database are available
+    if (!Chat || mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        message: 'Chat history cleared (database not available)'
+      });
+    }
+
+    await Chat.deleteOne({ userId, analysisId });
+
+    console.log('🗑️ Chat history deleted for:', { userId, analysisId });
+    res.json({
+      success: true,
+      message: 'Chat history deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting chat history:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete chat history',
+      details: error.message
+    });
+  }
+});
+
+// Get recent chats for a user (optional - for future dashboard feature)
+app.get('/api/chat/recent', async (req, res) => {
+  try {
+    const userId = req.headers['x-user-id'];
+    
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'User ID is required' 
+      });
+    }
+
+    // Check if Chat model and database are available
+    if (!Chat || mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        chats: []
+      });
+    }
+
+    const recentChats = await Chat.getRecentChats(userId, 10);
+
+    res.json({
+      success: true,
+      chats: recentChats
+    });
+  } catch (error) {
+    console.error('Error fetching recent chats:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch recent chats',
+      details: error.message
+    });
+  }
+});
+
+// ===== END CHAT API ENDPOINTS =====
 
 // Error handling middleware
 app.use((error, req, res, next) => {
