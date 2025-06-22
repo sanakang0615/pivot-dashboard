@@ -75,6 +75,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
+              marginTop: '3rem',
               padding: '0.75rem',
               background: 'linear-gradient(135deg, #000, #333)',
               color: 'white',
