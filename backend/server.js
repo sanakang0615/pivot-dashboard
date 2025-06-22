@@ -79,7 +79,7 @@ connectDB().catch(err => {
 app.use(cors({
   origin: true, // Allow all origins temporarily for debugging
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization', 'Origin', 'Accept'],
   exposedHeaders: ['Content-Type', 'x-user-id'],
   maxAge: 86400 // 24 hours
