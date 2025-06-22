@@ -188,8 +188,8 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
         style={{ maxWidth: '100%' }}
       />
       <div className="mt-2 text-sm text-gray-600 text-center">
-        <p>💡 색상이 진할수록 높은 성과를 나타냅니다</p>
-        <p>CTR/CVR: 높을수록 좋음 | CPA: 낮을수록 좋음</p>
+        <p><span className="tossface">💡</span> <span className="pretendard">색상이 진할수록 높은 성과를 나타냅니다</span></p>
+        <p className="pretendard">CTR/CVR: 높을수록 좋음 | CPA: 낮을수록 좋음</p>
       </div>
     </div>
   );

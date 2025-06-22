@@ -42,13 +42,17 @@ const AnalysisPage = () => {
         event.preventDefault();
         setChatSidebarOpen(true);
       }
+      if ((event.metaKey || event.ctrlKey) && event.key === 'l') {
+        event.preventDefault();
+        setSidebarOpen(!sidebarOpen);
+      }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [sidebarOpen]);
 
   // Clerk 인증 상태 디버깅
   useEffect(() => {
@@ -409,28 +413,6 @@ const AnalysisPage = () => {
             >
               Back to Dashboard
             </button>
-            
-            <button
-              onClick={() => navigate('/analysis')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                fontSize: '0.95rem',
-                fontWeight: '600',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <span className="tossface">🆕</span>
-              New Analysis
-            </button>
           </div>
         </div>
       </div>
@@ -512,28 +494,6 @@ const AnalysisPage = () => {
             >
               Back to Dashboard
             </button>
-            
-            <button
-              onClick={() => navigate('/analysis')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.75rem 1.5rem',
-                background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                fontSize: '0.95rem',
-                fontWeight: '600',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <span className="tossface">🆕</span>
-              New Analysis
-            </button>
           </div>
         </div>
       </div>
@@ -547,7 +507,12 @@ const AnalysisPage = () => {
       fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       position: 'relative'
     }}>
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar 
+        isOpen={sidebarOpen && !chatSidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+        analysisList={analysisList}
+        currentAnalysisId={analysisId}
+      />
       <ChatSidebar 
         isOpen={chatSidebarOpen} 
         onClose={() => setChatSidebarOpen(false)} 
@@ -626,35 +591,6 @@ const AnalysisPage = () => {
               AdOasis
             </h1>
           </div>
-
-          {/* Back to Analysis Button */}
-          <button
-            onClick={() => navigate('/analysis')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.5rem 1rem',
-              background: 'rgba(255, 255, 255, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              color: '#374151',
-              fontSize: '0.9rem',
-              fontWeight: '500',
-              backdropFilter: 'blur(10px)',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'rgba(255, 255, 255, 0.8)';
-            }}
-          >
-            <ArrowLeft size={16} />
-            New Analysis
-          </button>
         </div>
 
         {/* Right side - Auth */}
@@ -670,33 +606,34 @@ const AnalysisPage = () => {
               alignItems: 'center',
               gap: '0.5rem',
               padding: '0.5rem 1rem',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
+              background: 'rgba(255, 255, 255, 0.4)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
               borderRadius: '8px',
               cursor: 'pointer',
-              color: 'white',
+              color: '#374151',
               fontSize: '0.9rem',
-              fontWeight: '600',
-              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.25)',
+              fontWeight: '500',
+              boxShadow: 'none',
               transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(255, 255, 255, 0.6)';
               e.target.style.transform = 'translateY(-1px)';
-              e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.35)';
             }}
             onMouseLeave={(e) => {
+              e.target.style.background = 'rgba(255, 255, 255, 0.4)';
               e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.25)';
             }}
           >
             <MessageCircle size={16} />
-            New Chat
+            Chat with AI
             <span style={{
               fontSize: '0.8rem',
               opacity: 0.8,
               marginLeft: '0.25rem',
               padding: '0.1rem 0.4rem',
-              background: 'rgba(255, 255, 255, 0.2)',
+              background: 'rgba(0, 0, 0, 0.05)',
               borderRadius: '4px'
             }}>
               ⌘I
@@ -804,7 +741,7 @@ const AnalysisPage = () => {
             padding: '2rem',
             border: '1px solid rgba(255, 255, 255, 0.3)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-            marginBottom: '2rem',
+            marginBottom: '1rem',
             '@media print': {
               background: 'white !important',
               border: '1px solid #000 !important',
@@ -827,50 +764,56 @@ const AnalysisPage = () => {
             <div style={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'space-between',
               gap: '2rem',
               flexWrap: 'wrap',
-              marginBottom: '1.5rem'
+              marginBottom: '.5rem'
             }}>
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem',
-                color: '#64748b',
-                fontSize: '0.95rem'
+                gap: '2rem',
+                flexWrap: 'wrap'
               }}>
-                <span className="tossface">📊</span>
-                Analyzed {analysis.metadata?.rowCount?.toLocaleString() || 0} rows of data
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  color: '#64748b',
+                  fontSize: '0.95rem'
+                }}>
+                  <span className="tossface">📊</span>
+                  Analyzed {analysis.metadata?.rowCount?.toLocaleString() || 0} rows of data
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  color: '#64748b',
+                  fontSize: '0.95rem'
+                }}>
+                  <span className="tossface">📅</span>
+                  {new Date(analysis.createdAt).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </div>
               </div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                color: '#64748b',
-                fontSize: '0.95rem'
-              }}>
-                <span className="tossface">📅</span>
-                {new Date(analysis.createdAt).toLocaleDateString('en-US', { 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <button
+              
+              {/* <button
                 onClick={() => navigate('/dashboard')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.75rem',
-                  padding: '1rem 1.5rem',
+                  padding: '0.5rem 1.25rem',
                   background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   cursor: 'pointer',
-                  fontSize: '0.95rem',
+                  fontSize: '0.9rem',
                   fontWeight: '600',
                   boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                   transition: 'all 0.2s ease'
@@ -884,39 +827,9 @@ const AnalysisPage = () => {
                   e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
                 }}
               >
-                <span className="tossface">📊</span>
+                <span className="tossface">🔙</span>
                 Go to Dashboard
-              </button>
-              
-              <button
-                onClick={() => navigate('/analysis')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '1rem 1.5rem',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  color: '#374151',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  fontSize: '0.95rem',
-                  fontWeight: '600',
-                  backdropFilter: 'blur(10px)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                  e.target.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'rgba(255, 255, 255, 0.8)';
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                <span className="tossface">🔄</span>
-                New Analysis
-              </button>
+              </button> */}
             </div>
           </div>
 
@@ -1017,8 +930,8 @@ const AnalysisPage = () => {
                         }}
                       />
                       <div className="mt-2 text-sm text-gray-600 text-center">
-                        <p>💡 색상이 진할수록 높은 성과를 나타냅니다</p>
-                        <p>CTR/CVR: 높을수록 좋음 | CPA: 낮을수록 좋음</p>
+                        <p><span className="tossface">💡</span> <span className="pretendard">색상이 진할수록 높은 성과를 나타냅니다</span></p>
+                        <p className="pretendard">CTR/CVR: 높을수록 좋음 | CPA: 낮을수록 좋음</p>
                       </div>
                     </div>
                   ) : (

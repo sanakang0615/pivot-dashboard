@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Loader2, MessageCircle, AtSign } from 'lucide-react';
+import { X, Send, Loader2, MessageCircle, AtSign, Maximize2, Minimize2 } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import ContextSelector from './ContextSelector';
 import ChatMessage from './ChatMessage';
@@ -10,8 +10,8 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedContexts, setSelectedContexts] = useState([]);
-  const [allUsedContexts, setAllUsedContexts] = useState([]);
   const [showContextSelector, setShowContextSelector] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -40,6 +40,21 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
     }
   }, [inputValue]);
 
+  // Keyboard shortcut for toggling chat sidebar
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'i') {
+        event.preventDefault();
+        onClose(); // Toggle by calling onClose
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
+
   const loadChatHistory = async () => {
     try {
       const analysisId = analysisData?._id || analysisData?.analysisId;
@@ -56,19 +71,18 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
           const loadedMessages = result.messages || [];
           setMessages(loadedMessages);
           
-          // Restore all contexts used in previous messages
-          const usedContexts = [];
+          // Get contexts from the current chat stream
+          const chatStreamContexts = [];
           loadedMessages.forEach(message => {
             if (message.contexts && Array.isArray(message.contexts)) {
               message.contexts.forEach(context => {
-                if (!usedContexts.some(c => c.id === context.id)) {
-                  usedContexts.push(context);
+                if (!chatStreamContexts.some(c => c.id === context.id)) {
+                  chatStreamContexts.push(context);
                 }
               });
             }
           });
-          setAllUsedContexts(usedContexts);
-          console.log('📚 Restored contexts from chat history:', usedContexts.map(c => c.name));
+          console.log('📚 Contexts from current chat stream:', chatStreamContexts.map(c => c.name));
         }
       }
     } catch (error) {
@@ -105,14 +119,6 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       timestamp: new Date().toISOString()
     };
 
-    // Add new contexts to the accumulated list
-    const updatedAllUsedContexts = [...allUsedContexts];
-    selectedContexts.forEach(context => {
-      if (!updatedAllUsedContexts.some(c => c.id === context.id)) {
-        updatedAllUsedContexts.push(context);
-      }
-    });
-
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInputValue('');
@@ -120,10 +126,30 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
     setIsLoading(true);
 
     try {
-      // Prepare the request body with all accumulated contexts
+      // Get all contexts used in the current chat stream
+      const chatStreamContexts = [];
+      messages.forEach(message => {
+        if (message.contexts && Array.isArray(message.contexts)) {
+          message.contexts.forEach(context => {
+            if (!chatStreamContexts.some(c => c.id === context.id)) {
+              chatStreamContexts.push(context);
+            }
+          });
+        }
+      });
+
+      // Combine current selection with chat stream contexts
+      const allContexts = [...selectedContexts];
+      chatStreamContexts.forEach(context => {
+        if (!allContexts.some(c => c.id === context.id)) {
+          allContexts.push(context);
+        }
+      });
+
+      // Prepare the request body with all contexts from the conversation
       const requestBody = {
         message: userMessage.content,
-        contexts: updatedAllUsedContexts, // Send all contexts used in conversation
+        contexts: allContexts, // Send all contexts used in conversation
         analysisData: sanitizeAnalysisData(analysisData),
         chatHistory: messages.slice(-10) // Last 10 messages for context
       };
@@ -132,7 +158,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       console.log('🚀 Sending to Gemini API:');
       console.log('📝 User Message:', requestBody.message);
       console.log('🔗 Current Selected Contexts:', userMessage.contexts.map(c => c.name));
-      console.log('📚 All Used Contexts:', requestBody.contexts.map(c => c.name));
+      console.log('📚 All Contexts in Conversation:', requestBody.contexts.map(c => c.name));
       console.log('📊 Analysis Data:', requestBody.analysisData);
       console.log('💬 Chat History:', requestBody.chatHistory.length, 'messages');
       console.log('📦 Full Request Body:', JSON.stringify(requestBody, null, 2));
@@ -180,7 +206,6 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
 
           const finalMessages = [...newMessages, aiMessage];
           setMessages(finalMessages);
-          setAllUsedContexts(updatedAllUsedContexts); // Update the accumulated contexts
           saveChatHistory(finalMessages);
         } else {
           throw new Error(result.error || 'API returned success: false');
@@ -286,354 +311,345 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      right: 0,
-      width: '420px',
-      height: '100vh',
-      background: 'rgba(255, 255, 255, 0.95)',
-      backdropFilter: 'blur(20px)',
-      borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
-      boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.1)',
-      zIndex: 1001,
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: '1.5rem',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(10px)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <MessageCircle size={16} color="white" />
-          </div>
-          <div>
-            <h3 style={{
-              fontSize: '1.1rem',
-              fontWeight: '600',
-              color: '#1e293b',
-              margin: 0
-            }}>
-              AI Assistant
-            </h3>
-            <p style={{
-              fontSize: '0.8rem',
-              color: '#64748b',
-              margin: 0
-            }}>
-              Ask questions about your analysis
-            </p>
-          </div>
-        </div>
-        
-        <button
-          onClick={onClose}
+    <>
+      {isExpanded && (
+        <div
+          onClick={() => setIsExpanded(false)}
           style={{
-            width: '32px',
-            height: '32px',
-            background: 'rgba(255, 255, 255, 0.8)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000,
           }}
-          onMouseEnter={(e) => {
-            e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.background = 'rgba(255, 255, 255, 0.8)';
-          }}
-        >
-          <X size={16} color="#64748b" />
-        </button>
-      </div>
-
-      {/* Messages */}
+        />
+      )}
       <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '1rem',
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        width: isExpanded ? '90vw' : '420px',
+        height: '100vh',
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.1)',
+        zIndex: 1001,
         display: 'flex',
         flexDirection: 'column',
-        gap: '1rem'
+        fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
       }}>
-        {messages.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '2rem',
-            color: '#64748b'
-          }}>
-            <MessageCircle size={48} color="#d1d5db" style={{ marginBottom: '1rem' }} />
-            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: '600' }}>
-              Start a conversation
-            </h4>
-            <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.5' }}>
-              Ask questions about your campaign data, get insights, or request specific analysis.
-            </p>
+        {/* Header */}
+        <div style={{
+          padding: '1.5rem',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{
-              marginTop: '1rem',
+              width: '32px',
+              height: '32px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <MessageCircle size={16} color="white" />
+            </div>
+            <div>
+              <h3 style={{
+                fontSize: '1.1rem',
+                fontWeight: '600',
+                color: '#1e293b',
+                margin: 0
+              }}>
+                AI Assistant
+              </h3>
+              <p style={{
+                fontSize: '0.8rem',
+                color: '#64748b',
+                margin: 0
+              }}>
+                Ask questions about your analysis
+              </p>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              style={{
+                width: '32px',
+                height: '32px',
+                background: 'rgba(255, 255, 255, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.8)';
+              }}
+            >
+              {isExpanded ? <Minimize2 size={16} color="#64748b" /> : <Maximize2 size={16} color="#64748b" />}
+            </button>
+            <button
+              onClick={onClose}
+              style={{
+                width: '32px',
+                height: '32px',
+                background: 'rgba(255, 255, 255, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.8)';
+              }}
+            >
+              <X size={16} color="#64748b" />
+            </button>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div 
+          className="no-scrollbar"
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '1rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+          {messages.length === 0 && (
+            <div style={{
+              textAlign: 'center',
+              padding: '2rem',
+              color: '#64748b'
+            }}>
+              <MessageCircle size={48} color="#d1d5db" style={{ marginBottom: '1rem' }} />
+              <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: '600' }}>
+                Start a conversation
+              </h4>
+              <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: '1.5' }}>
+                Ask questions about your campaign data, get insights, or request specific analysis.
+              </p>
+              <div style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                background: 'rgba(102, 126, 234, 0.05)',
+                borderRadius: '12px',
+                border: '1px solid rgba(102, 126, 234, 0.1)'
+              }}>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>
+                  💡 <strong>Tip:</strong> Use the @ button to include specific data tables in your questions.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+
+          {isLoading && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
               padding: '1rem',
               background: 'rgba(102, 126, 234, 0.05)',
               borderRadius: '12px',
               border: '1px solid rgba(102, 126, 234, 0.1)'
             }}>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>
-                💡 <strong>Tip:</strong> Use the @ button to include specific data tables in your questions.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
-        ))}
-
-        {isLoading && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            padding: '1rem',
-            background: 'rgba(102, 126, 234, 0.05)',
-            borderRadius: '12px',
-            border: '1px solid rgba(102, 126, 234, 0.1)'
-          }}>
-            <Loader2 size={16} color="#667eea" className="animate-spin" />
-            <span style={{ fontSize: '0.9rem', color: '#475569' }}>
-              AI is thinking...
-            </span>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Area */}
-      <div style={{
-        padding: '1rem',
-        borderTop: '1px solid rgba(255, 255, 255, 0.3)',
-        background: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(10px)'
-      }}>
-        {/* Selected Contexts */}
-        {selectedContexts.length > 0 && (
-          <div style={{
-            marginBottom: '0.75rem',
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.5rem'
-          }}>
-            {selectedContexts.map((context) => (
-              <div
-                key={context.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  padding: '0.5rem 0.75rem',
-                  background: 'rgba(102, 126, 234, 0.1)',
-                  border: '1px solid rgba(102, 126, 234, 0.2)',
-                  borderRadius: '8px',
-                  fontSize: '0.8rem',
-                  color: '#475569'
-                }}
-              >
-                <span>{context.name}</span>
-                <button
-                  onClick={() => removeContext(context.id)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
-                >
-                  <X size={12} color="#64748b" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* All Used Contexts Summary */}
-        {allUsedContexts.length > 0 && (
-          <div style={{
-            marginBottom: '0.75rem',
-            padding: '0.75rem',
-            background: 'rgba(16, 185, 129, 0.05)',
-            border: '1px solid rgba(16, 185, 129, 0.1)',
-            borderRadius: '8px'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              marginBottom: '0.5rem'
-            }}>
-              <span style={{
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                color: '#059669'
-              }}>
-                📚 Available Contexts ({allUsedContexts.length})
+              <Loader2 size={16} color="#667eea" className="animate-spin" />
+              <span style={{ fontSize: '0.9rem', color: '#475569' }}>
+                AI is thinking...
               </span>
             </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Area */}
+        <div style={{
+          padding: '1rem',
+          borderTop: '1px solid rgba(255, 255, 255, 0.3)',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)'
+        }}>
+          {/* Selected Contexts */}
+          {selectedContexts.length > 0 && (
             <div style={{
+              marginBottom: '0.75rem',
               display: 'flex',
               flexWrap: 'wrap',
-              gap: '0.25rem'
+              gap: '0.5rem'
             }}>
-              {allUsedContexts.map((context) => (
+              {selectedContexts.map((context) => (
                 <div
                   key={context.id}
                   style={{
-                    padding: '0.25rem 0.5rem',
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    border: '1px solid rgba(16, 185, 129, 0.2)',
-                    borderRadius: '4px',
-                    fontSize: '0.7rem',
-                    color: '#059669',
-                    opacity: selectedContexts.some(c => c.id === context.id) ? 1 : 0.7
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    background: 'rgba(167, 139, 250, 0.15)',
+                    border: '1px solid rgba(167, 139, 250, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '0.8rem',
+                    color: '#5b21b6'
                   }}
                 >
-                  {context.name}
+                  <span>{context.name}</span>
+                  <button
+                    onClick={() => removeContext(context.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <X size={12} color="#8b5cf6" />
+                  </button>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Input */}
-        <div style={{
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: '0.5rem'
-        }}>
+          {/* Input */}
           <div style={{
-            position: 'relative',
-            flex: 1
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: '0.5rem'
           }}>
             <button
               onClick={() => setShowContextSelector(!showContextSelector)}
               style={{
-                position: 'absolute',
-                left: '0.75rem',
-                bottom: '0.75rem',
-                width: '24px',
-                height: '24px',
-                background: 'rgba(102, 126, 234, 0.1)',
-                border: '1px solid rgba(102, 126, 234, 0.2)',
-                borderRadius: '6px',
+                width: '44px',
+                height: '44px',
+                background: 'rgba(255, 255, 255, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                zIndex: 10
               }}
               onMouseEnter={(e) => {
-                e.target.style.background = 'rgba(102, 126, 234, 0.15)';
+                e.target.style.background = 'rgba(255, 255, 255, 0.95)';
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = 'rgba(102, 126, 234, 0.1)';
+                e.target.style.background = 'rgba(255, 255, 255, 0.8)';
               }}
             >
-              <AtSign size={12} color="#667eea" />
+              <AtSign size={16} color="#64748b" />
             </button>
+            
+            <div style={{
+              position: 'relative',
+              flex: 1
+            }}>
+              <textarea
+                ref={textareaRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask about your campaign data..."
+                disabled={isLoading}
+                style={{
+                  width: '100%',
+                  minHeight: '44px',
+                  maxHeight: '120px',
+                  padding: '0.75rem',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '12px',
+                  resize: 'none',
+                  fontSize: '0.9rem',
+                  lineHeight: '1.4',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  transition: 'all 0.2s ease'
+                }}
+                onFocus={(e) => {
+                  e.target.style.border = '1px solid rgba(167, 139, 250, 0.5)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(167, 139, 250, 0.15)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
+            </div>
 
-            <textarea
-              ref={textareaRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask about your campaign data..."
-              disabled={isLoading}
+            <button
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || isLoading}
               style={{
-                width: '100%',
-                minHeight: '44px',
-                maxHeight: '120px',
-                padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                background: 'rgba(255, 255, 255, 0.9)',
+                width: '44px',
+                height: '44px',
+                background: inputValue.trim() && !isLoading 
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  : 'rgba(255, 255, 255, 0.8)',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
                 borderRadius: '12px',
-                resize: 'none',
-                fontSize: '0.9rem',
-                lineHeight: '1.4',
-                fontFamily: 'inherit',
-                outline: 'none',
-                transition: 'all 0.2s ease'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: inputValue.trim() && !isLoading ? 'pointer' : 'not-allowed',
+                transition: 'all 0.2s ease',
+                opacity: inputValue.trim() && !isLoading ? 1 : 0.5
               }}
-              onFocus={(e) => {
-                e.target.style.border = '1px solid rgba(102, 126, 234, 0.4)';
-                e.target.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.border = '1px solid rgba(255, 255, 255, 0.3)';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
+            >
+              {isLoading ? (
+                <Loader2 size={16} color="#667eea" className="animate-spin" />
+              ) : (
+                <Send size={16} color={inputValue.trim() ? 'white' : '#64748b'} />
+              )}
+            </button>
           </div>
 
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading}
-            style={{
-              width: '44px',
-              height: '44px',
-              background: inputValue.trim() && !isLoading 
-                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                : 'rgba(255, 255, 255, 0.8)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: inputValue.trim() && !isLoading ? 'pointer' : 'not-allowed',
-              transition: 'all 0.2s ease',
-              opacity: inputValue.trim() && !isLoading ? 1 : 0.5
-            }}
-          >
-            {isLoading ? (
-              <Loader2 size={16} color="#667eea" className="animate-spin" />
-            ) : (
-              <Send size={16} color={inputValue.trim() ? 'white' : '#64748b'} />
-            )}
-          </button>
+          {/* Context Selector */}
+          {showContextSelector && (
+            <ContextSelector
+              analysisData={analysisData}
+              onSelect={handleContextSelect}
+              selectedContexts={selectedContexts}
+              onClose={() => setShowContextSelector(false)}
+            />
+          )}
         </div>
-
-        {/* Context Selector */}
-        {showContextSelector && (
-          <ContextSelector
-            analysisData={analysisData}
-            onSelect={handleContextSelect}
-            selectedContexts={selectedContexts}
-            onClose={() => setShowContextSelector(false)}
-          />
-        )}
       </div>
-    </div>
+    </>
   );
 };
 

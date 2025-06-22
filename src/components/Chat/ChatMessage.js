@@ -27,13 +27,8 @@ const ChatMessage = ({ message }) => {
   };
 
   const getContextColor = (type) => {
-    switch (type) {
-      case 'data': return '#3b82f6';
-      case 'pivot': return '#10b981';
-      case 'visualization': return '#8b5cf6';
-      case 'report': return '#f59e0b';
-      default: return '#6b7280';
-    }
+    // Return a purple color for all context types
+    return '#8b5cf6';
   };
 
   return (
@@ -95,7 +90,7 @@ const ChatMessage = ({ message }) => {
             ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
             : isError
             ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-            : 'linear-gradient(135deg, #10b981, #059669)',
+            : 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
         }}>
           {isUser ? (

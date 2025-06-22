@@ -44,13 +44,13 @@ code {
 button:focus,
 input:focus,
 textarea:focus {
-  outline: 2px solid #84cc16;
+  outline: 2px solid #8b5cf6;
   outline-offset: 2px;
 }
 
 /* Selection styles */
 ::selection {
-  background-color: #84cc16;
+  background-color: #8b5cf6;
   color: white;
 }
 

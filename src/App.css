@@ -355,6 +355,7 @@ body {
   background: linear-gradient(135deg, #65a30d, #4d7c0f);
   box-shadow: 0 4px 8px rgba(132, 204, 22, 0.3);
   transform: translateY(-1px);
+  opacity: 0.9;
 }
 
 .btn-secondary {
@@ -609,7 +610,7 @@ button:focus,
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid #84cc16;
+  outline: 2px solid #8b5cf6;
   outline-offset: 2px;
 }
 
@@ -619,4 +620,14 @@ textarea:focus {
               background-color 0.15s ease-in-out, 
               border-color 0.15s ease-in-out, 
               box-shadow 0.15s ease-in-out;
+}
+
+/* Custom scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

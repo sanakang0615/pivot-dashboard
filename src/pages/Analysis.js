@@ -30,6 +30,21 @@ const Analysis = () => {
     }
   }, [isSignedIn, userId]);
 
+  // Keyboard shortcut for sidebar
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'l') {
+        event.preventDefault();
+        setSidebarOpen(!sidebarOpen);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [sidebarOpen]);
+
   // Handle file upload with login check
   const handleFileUpload = async (file) => {
     if (!isSignedIn) {
