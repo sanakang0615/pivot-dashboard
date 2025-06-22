@@ -7,7 +7,7 @@ const AnalysisSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   rawData: { type: Array, default: [] },
-  pivotData: { type: Array, default: [] },
+  pivotData: { type: Object, default: {} },
   classifiedData: { type: Array, default: [] },
   insights: { type: String, default: '' },
   heatmapImage: { type: String, default: '' },

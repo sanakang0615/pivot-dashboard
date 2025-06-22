@@ -4,14 +4,15 @@ import { useAuth, UserButton } from '@clerk/clerk-react';
 import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import HeatmapChart from '../HeatmapChart';
+import Sidebar from '../Common/Sidebar';
 
 const AnalysisPage = () => {
   const { analysisId } = useParams();
   const { userId, isSignedIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [analysis, setAnalysis] = useState(location.state?.analysis || null);
-  const [loading, setLoading] = useState(!location.state?.analysis);
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [analysisList, setAnalysisList] = useState([]);
@@ -27,11 +28,18 @@ const AnalysisPage = () => {
   }, [userId, isSignedIn, analysisId]);
 
   useEffect(() => {
-    if (analysisId && userId && isSignedIn) {
-      if (!location.state?.analysis) {
-        fetchAnalysis();
-      }
-      fetchAnalysisList();
+    const analysisFromState = location.state?.analysis;
+
+    // Case 1: New analysis result from navigation state.
+    // It has `analysisId` and `pivotTables`, but no `_id` yet.
+    if (analysisFromState && analysisFromState.analysisId === analysisId && analysisFromState.pivotTables) {
+      console.log('📊 Using analysis from navigation state:', analysisFromState);
+      setAnalysis(analysisFromState);
+      setLoading(false);
+    } 
+    // Case 2: Existing analysis, refresh, or direct navigation. Fetch from server.
+    else if (analysisId && userId && isSignedIn) {
+      fetchAnalysis();
     } else if (!isSignedIn) {
       navigate('/');
     }
@@ -55,7 +63,25 @@ const AnalysisPage = () => {
 
       const data = await response.json();
       if (data.success) {
-        setAnalysis(data.analysis);
+        console.log('📊 Analysis data received:', data.analysis);
+        
+        let fetchedAnalysis = data.analysis;
+
+        // [Defensive Code]
+        // Handle legacy pivotData which might be an array.
+        // If pivotTables is not a valid object, try to reconstruct it from pivotData.
+        const hasValidPivotTables = fetchedAnalysis.pivotTables && typeof fetchedAnalysis.pivotTables === 'object' && Object.keys(fetchedAnalysis.pivotTables).length > 0;
+
+        if (!hasValidPivotTables && Array.isArray(fetchedAnalysis.pivotData) && fetchedAnalysis.pivotData.length > 0) {
+          console.warn('Legacy array-based pivotData detected. Converting to object format.');
+          // Assuming the array contains the object with pivot tables
+          const pivotObject = fetchedAnalysis.pivotData[0]; 
+          if(typeof pivotObject === 'object' && pivotObject !== null) {
+            fetchedAnalysis.pivotTables = pivotObject;
+          }
+        }
+        
+        setAnalysis(fetchedAnalysis);
       } else {
         throw new Error(data.error || 'Failed to load analysis');
       }
@@ -76,7 +102,7 @@ const AnalysisPage = () => {
         return;
       }
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/list`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses`, {
         headers: {
           'x-user-id': userId,
           'Content-Type': 'application/json'
@@ -113,18 +139,25 @@ const AnalysisPage = () => {
 
   // 히트맵 이미지를 저장하는 함수
   const saveHeatmapImage = async () => {
-    if (!heatmapRef.current || !analysisId) return;
+    // Ensure we have all necessary data to save, including a heatmap if possible
+    if (!analysis || !analysis.fileName || !userId) return;
+
+    let heatmapImage = null;
+    if (heatmapRef.current) {
+      heatmapImage = heatmapRef.current.getImageAsBase64();
+      if (!heatmapImage) {
+        console.warn('Could not generate heatmap image for saving.');
+      }
+    }
+    
+    // Use analysisId from the analysis object itself, which could be new
+    const idToSave = analysis.analysisId || analysis._id;
+    if (!idToSave) {
+      console.error('Cannot save analysis without an ID.');
+      return;
+    }
 
     try {
-      // 히트맵을 Base64 이미지로 변환
-      const heatmapImage = heatmapRef.current.getImageAsBase64();
-      
-      if (!heatmapImage) {
-        console.warn('Failed to generate heatmap image');
-        return;
-      }
-
-      // 서버에 히트맵 이미지 저장
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/save`, {
         method: 'POST',
         headers: {
@@ -132,10 +165,10 @@ const AnalysisPage = () => {
           'x-user-id': userId
         },
         body: JSON.stringify({
-          analysisId: analysisId,
+          analysisId: idToSave,
           fileName: analysis.fileName,
           metadata: analysis.metadata,
-          pivotTables: analysis.pivotData,
+          pivotTables: analysis.pivotTables,
           insights: analysis.insights,
           heatmapImage: heatmapImage
         })
@@ -143,26 +176,42 @@ const AnalysisPage = () => {
 
       const result = await response.json();
       if (result.success) {
-        console.log('✅ Heatmap image saved successfully');
+        console.log('✅ Analysis saved successfully');
+        // Optionally update sidebar or other components
       } else {
-        console.error('Failed to save heatmap image:', result.error);
+        console.error('Failed to save analysis:', result.error);
       }
     } catch (error) {
-      console.error('Error saving heatmap image:', error);
+      console.error('Error saving analysis:', error);
     }
   };
 
   // 분석 데이터가 로드되면 히트맵 이미지 저장
   useEffect(() => {
-    if (analysis && analysis.pivotData && analysis.pivotData.Campaign && heatmapRef.current) {
-      // 히트맵이 렌더링될 시간을 주기 위해 약간의 지연
+    if (analysis && analysis.pivotTables) {
+      // For new analyses, a heatmap might not be rendered yet.
+      // We save once with heatmap, or just save the data if no heatmap.
       const timer = setTimeout(() => {
         saveHeatmapImage();
-      }, 1000);
+      }, 1000); // Delay to allow heatmap to render
       
       return () => clearTimeout(timer);
     }
-  }, [analysis, analysisId, userId]);
+  }, [analysis, userId]);
+
+  // 분석 데이터가 변경될 때마다 로깅
+  useEffect(() => {
+    if (analysis) {
+      console.log('📊 Analysis state updated:', {
+        hasPivotTables: !!analysis.pivotTables,
+        pivotTablesType: typeof analysis.pivotTables,
+        pivotTablesKeys: analysis.pivotTables ? Object.keys(analysis.pivotTables) : [],
+        hasCampaign: analysis.pivotTables && analysis.pivotTables.Campaign,
+        campaignType: analysis.pivotTables?.Campaign ? typeof analysis.pivotTables.Campaign : 'undefined',
+        campaignLength: analysis.pivotTables?.Campaign ? (Array.isArray(analysis.pivotTables.Campaign) ? analysis.pivotTables.Campaign.length : 'not array') : 'undefined'
+      });
+    }
+  }, [analysis]);
 
   if (loading) {
     return (
@@ -434,6 +483,7 @@ const AnalysisPage = () => {
       fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       position: 'relative'
     }}>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Global Auth Header */}
       <div style={{
         width: '100%',
@@ -612,181 +662,6 @@ const AnalysisPage = () => {
         </div>
       </div>
 
-      {/* Sidebar */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        height: '100vh',
-        width: '320px',
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(20px)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.3)',
-        boxShadow: '4px 0 32px rgba(0, 0, 0, 0.08)',
-        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.3s ease',
-        zIndex: 999,
-        overflow: 'hidden'
-      }}>
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {/* Sidebar Header */}
-          <div style={{
-            padding: '2rem 1.5rem 1rem',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.3)'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h2 style={{
-                fontSize: '1.2rem',
-                fontWeight: '700',
-                color: '#1e293b',
-                margin: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <span className="tossface">📁</span>
-                My Analyses
-              </h2>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
-                  background: 'transparent',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(0, 0, 0, 0.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'transparent';
-                }}
-              >
-                <X size={18} color="#64748b" />
-              </button>
-            </div>
-          </div>
-
-          {/* Sidebar Content */}
-          <div style={{
-            flex: 1,
-            padding: '1rem',
-            overflowY: 'auto'
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {analysisList.length === 0 ? (
-                <div style={{
-                  textAlign: 'center',
-                  padding: '2rem 1rem',
-                  color: '#64748b'
-                }}>
-                  <span className="tossface" style={{ 
-                    fontSize: '2rem',
-                    display: 'block',
-                    marginBottom: '1rem'
-                  }}>📊</span>
-                  <p style={{
-                    fontSize: '0.9rem',
-                    lineHeight: '1.5'
-                  }}>
-                    No analyses yet. Upload your first file to get started!
-                  </p>
-                </div>
-              ) : (
-                analysisList.map((analysisItem, index) => (
-                  <div 
-                    key={index} 
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      padding: '0.75rem 1rem',
-                      background: analysisItem._id === analysisId 
-                        ? 'linear-gradient(135deg, #667eea20, #764ba220)'
-                        : 'rgba(255, 255, 255, 0.7)',
-                      border: analysisItem._id === analysisId 
-                        ? '2px solid rgba(102, 126, 234, 0.3)'
-                        : '1px solid rgba(255, 255, 255, 0.3)',
-                      borderRadius: '10px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={() => {
-                      console.log('Clicked analysis:', analysisItem);
-                      if (analysisItem._id) {
-                        navigate(`/analysis/${analysisItem._id}`);
-                      } else {
-                        alert('분석 ID가 없습니다!');
-                      }
-                    }}
-                    onMouseEnter={(e) => {
-                      if (analysisItem._id !== analysisId) {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
-                        e.currentTarget.style.transform = 'translateX(4px)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (analysisItem._id !== analysisId) {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.7)';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                      }
-                    }}
-                  >
-                    <FileText size={16} color={analysisItem._id === analysisId ? "#667eea" : "#64748b"} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{
-                        fontSize: '0.85rem',
-                        fontWeight: analysisItem._id === analysisId ? '600' : '500',
-                        color: analysisItem._id === analysisId ? '#667eea' : '#374151',
-                        margin: 0,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        {analysisItem.fileName || `Analysis ${index + 1}`}
-                      </p>
-                      <p style={{
-                        fontSize: '0.75rem',
-                        color: '#64748b',
-                        margin: 0
-                      }}>
-                        {new Date(analysisItem.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {analysisItem._id !== analysisId && <ArrowRight size={14} color="#64748b" />}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.2)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 998
-          }}
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
       {/* Main Content */}
       <main style={{
         padding: '2rem',
@@ -938,85 +813,110 @@ const AnalysisPage = () => {
           </div>
 
           {/* Pivot Tables */}
-          {analysis.pivotTables && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-              gap: '1.5rem',
-              marginBottom: '2rem'
-            }}>
-              {Object.entries(analysis.pivotTables).map(([level, data]) => (
-                <PivotTableCard 
-                  key={level} 
-                  level={level} 
-                  data={data} 
-                  formatNumber={formatNumber} 
-                />
-              ))}
-            </div>
-          )}
+          {(() => {
+            console.log('🔍 Checking pivotTables condition:', !!analysis.pivotTables);
+            console.log('🔍 pivotTables content:', analysis.pivotTables);
+            
+            // pivotTables가 존재하고 객체이며, 최소 하나의 키가 있고, 그 값이 배열인지 확인
+            const hasValidPivotTables = analysis.pivotTables && 
+              typeof analysis.pivotTables === 'object' && 
+              Object.keys(analysis.pivotTables).length > 0 &&
+              Object.values(analysis.pivotTables).some(data => Array.isArray(data) && data.length > 0);
+            
+            console.log('🔍 hasValidPivotTables:', hasValidPivotTables);
+            
+            return hasValidPivotTables && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+                gap: '1.5rem',
+                marginBottom: '2rem'
+              }}>
+                {Object.entries(analysis.pivotTables)
+                  .filter(([level, data]) => Array.isArray(data) && data.length > 0)
+                  .map(([level, data]) => (
+                    <PivotTableCard 
+                      key={level} 
+                      level={level} 
+                      data={data} 
+                      formatNumber={formatNumber} 
+                    />
+                  ))}
+              </div>
+            );
+          })()}
 
           {/* Performance Heatmap */}
-          {analysis.pivotTables && analysis.pivotTables.Campaign && (
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.8)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: '20px',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
-            }}>
-              <div style={{ padding: '2rem 2rem 1rem' }}>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: '#1e293b',
-                  margin: 0,
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <span className="tossface">🔥</span>
-                  Performance Heatmap
-                </h3>
-                <p style={{
-                  color: '#64748b',
-                  margin: 0,
-                  fontSize: '0.95rem'
-                }}>
-                  Visual representation of key metrics across campaigns
-                </p>
-              </div>
-              <div style={{ padding: '0 2rem 2rem' }}>
-                {analysis.heatmapImage ? (
-                  // 저장된 히트맵 이미지가 있으면 표시
-                  <div style={{ textAlign: 'center' }}>
-                    <img 
-                      src={analysis.heatmapImage} 
-                      alt="Performance Heatmap"
-                      style={{
-                        maxWidth: '100%',
-                        height: 'auto',
-                        borderRadius: '12px',
-                        border: '1px solid rgba(0, 0, 0, 0.1)'
-                      }}
-                    />
-                    <div className="mt-2 text-sm text-gray-600 text-center">
-                      <p>💡 색상이 진할수록 높은 성과를 나타냅니다</p>
-                      <p>CTR/CVR: 높을수록 좋음 | CPA: 낮을수록 좋음</p>
+          {(() => {
+            const hasValidCampaignData = analysis.pivotTables && 
+              analysis.pivotTables.Campaign && 
+              Array.isArray(analysis.pivotTables.Campaign) && 
+              analysis.pivotTables.Campaign.length > 0;
+            
+            console.log('🔥 Checking heatmap condition:', hasValidCampaignData);
+            console.log('🔥 Campaign data:', analysis.pivotTables?.Campaign);
+            
+            return hasValidCampaignData && (
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
+              }}>
+                <div style={{ padding: '2rem 2rem 1rem' }}>
+                  <h3 style={{
+                    fontSize: '1.25rem',
+                    fontWeight: '700',
+                    color: '#1e293b',
+                    margin: 0,
+                    marginBottom: '0.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}>
+                    <span className="tossface">🔥</span>
+                    Performance Heatmap
+                  </h3>
+                  <p style={{
+                    color: '#64748b',
+                    margin: 0,
+                    fontSize: '0.95rem'
+                  }}>
+                    Visual representation of key metrics across campaigns
+                  </p>
+                </div>
+                <div style={{ padding: '0 2rem 2rem' }}>
+                  {analysis.heatmapImage ? (
+                    // 저장된 히트맵 이미지가 있으면 표시
+                    <div style={{ textAlign: 'center' }}>
+                      <img 
+                        src={analysis.heatmapImage} 
+                        alt="Performance Heatmap"
+                        style={{
+                          maxWidth: '100%',
+                          height: 'auto',
+                          borderRadius: '12px',
+                          border: '1px solid rgba(0, 0, 0, 0.1)'
+                        }}
+                      />
+                      <div className="mt-2 text-sm text-gray-600 text-center">
+                        <p>💡 색상이 진할수록 높은 성과를 나타냅니다</p>
+                        <p>CTR/CVR: 높을수록 좋음 | CPA: 낮을수록 좋음</p>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  // 저장된 이미지가 없으면 새로 생성
-                  <HeatmapChart 
-                    ref={heatmapRef}
-                    data={analysis.pivotTables.Campaign}
-                    title="Campaign Performance Heatmap"
-                  />
-                )}
+                  ) : (
+                    // 저장된 이미지가 없으면 새로 생성
+                    <HeatmapChart 
+                      ref={heatmapRef}
+                      data={analysis.pivotTables.Campaign}
+                      title="Campaign Performance Heatmap"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* AI Insights Report */}
           {analysis.insights && (
@@ -1051,87 +951,84 @@ const AnalysisPage = () => {
               </div>
               <div style={{ padding: '0 2rem 2rem' }}>
                 <div style={{
-                  background: 'rgba(102, 126, 234, 0.05)',
-                  padding: '1.5rem',
+                  padding: '2rem',
+                  background: 'rgba(255, 255, 255, 0.9)',
                   borderRadius: '16px',
-                  border: '1px solid rgba(102, 126, 234, 0.1)'
-                }}>
-                  <div style={{
-                    whiteSpace: 'pre-wrap',
-                    color: '#374151',
-                    lineHeight: '1.7',
-                    fontSize: '0.95rem'
-                  }}>
-                    <ReactMarkdown
-                      className="tossface"
-                      components={{
-                        h1: ({children}) => <h1 style={{
-                          fontSize: '1.5rem',
-                          fontWeight: '700',
-                          color: '#1e293b',
-                          margin: '1.5rem 0 1rem 0',
-                          borderBottom: '2px solid rgba(102, 126, 234, 0.2)',
-                          paddingBottom: '0.5rem'
-                        }}>{children}</h1>,
-                        h2: ({children}) => <h2 style={{
-                          fontSize: '1.25rem',
-                          fontWeight: '600',
-                          color: '#1e293b',
-                          margin: '1.25rem 0 0.75rem 0'
-                        }}>{children}</h2>,
-                        h3: ({children}) => <h3 style={{
-                          fontSize: '1.1rem',
-                          fontWeight: '600',
-                          color: '#374151',
-                          margin: '1rem 0 0.5rem 0'
-                        }}>{children}</h3>,
-                        p: ({children}) => <p style={{
-                          margin: '0.75rem 0',
-                          lineHeight: '1.7'
-                        }}>{children}</p>,
-                        ul: ({children}) => <ul style={{
-                          margin: '0.75rem 0',
-                          paddingLeft: '1.5rem'
-                        }}>{children}</ul>,
-                        ol: ({children}) => <ol style={{
-                          margin: '0.75rem 0',
-                          paddingLeft: '1.5rem'
-                        }}>{children}</ol>,
-                        li: ({children}) => <li style={{
-                          margin: '0.25rem 0',
-                          lineHeight: '1.6'
-                        }}>{children}</li>,
-                        strong: ({children}) => <strong style={{
-                          fontWeight: '600',
-                          color: '#1e293b'
-                        }}>{children}</strong>,
-                        em: ({children}) => <em style={{
-                          fontStyle: 'italic',
-                          color: '#475569'
-                        }}>{children}</em>,
-                        code: ({children}) => <code style={{
-                          background: 'rgba(102, 126, 234, 0.1)',
-                          padding: '0.2rem 0.4rem',
-                          borderRadius: '4px',
-                          fontSize: '0.85rem',
-                          fontFamily: 'monospace',
-                          color: '#667eea'
-                        }}>{children}</code>,
-                        blockquote: ({children}) => <blockquote style={{
-                          borderLeft: '4px solid rgba(102, 126, 234, 0.3)',
-                          paddingLeft: '1rem',
-                          margin: '1rem 0',
-                          fontStyle: 'italic',
-                          color: '#475569',
-                          background: 'rgba(102, 126, 234, 0.05)',
-                          padding: '1rem',
-                          borderRadius: '8px'
-                        }}>{children}</blockquote>
-                      }}
-                    >
-                      {analysis.insights}
-                    </ReactMarkdown>
-                  </div>
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+                  whiteSpace: 'pre-wrap',
+                  color: '#374151',
+                  lineHeight: '1.7',
+                  fontSize: '0.95rem'
+                }} className="tossface">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({children}) => <h1 style={{
+                        fontSize: '1.5rem',
+                        fontWeight: '700',
+                        color: '#1e293b',
+                        margin: '1.5rem 0 1rem 0',
+                        borderBottom: '2px solid rgba(102, 126, 234, 0.2)',
+                        paddingBottom: '0.5rem'
+                      }}>{children}</h1>,
+                      h2: ({children}) => <h2 style={{
+                        fontSize: '1.25rem',
+                        fontWeight: '600',
+                        color: '#1e293b',
+                        margin: '1.25rem 0 0.75rem 0'
+                      }}>{children}</h2>,
+                      h3: ({children}) => <h3 style={{
+                        fontSize: '1.1rem',
+                        fontWeight: '600',
+                        color: '#374151',
+                        margin: '1rem 0 0.5rem 0'
+                      }}>{children}</h3>,
+                      p: ({children}) => <p style={{
+                        margin: '0.75rem 0',
+                        lineHeight: '1.7'
+                      }}>{children}</p>,
+                      ul: ({children}) => <ul style={{
+                        margin: '0.75rem 0',
+                        paddingLeft: '1.5rem'
+                      }}>{children}</ul>,
+                      ol: ({children}) => <ol style={{
+                        margin: '0.75rem 0',
+                        paddingLeft: '1.5rem'
+                      }}>{children}</ol>,
+                      li: ({children}) => <li style={{
+                        margin: '0.25rem 0',
+                        lineHeight: '1.6'
+                      }}>{children}</li>,
+                      strong: ({children}) => <strong style={{
+                        fontWeight: '600',
+                        color: '#1e293b'
+                      }}>{children}</strong>,
+                      em: ({children}) => <em style={{
+                        fontStyle: 'italic',
+                        color: '#475569'
+                      }}>{children}</em>,
+                      code: ({children}) => <code style={{
+                        background: 'rgba(102, 126, 234, 0.1)',
+                        padding: '0.2rem 0.4rem',
+                        borderRadius: '4px',
+                        fontSize: '0.85rem',
+                        fontFamily: 'monospace',
+                        color: '#667eea'
+                      }}>{children}</code>,
+                      blockquote: ({children}) => <blockquote style={{
+                        borderLeft: '4px solid rgba(102, 126, 234, 0.3)',
+                        paddingLeft: '1rem',
+                        margin: '1rem 0',
+                        fontStyle: 'italic',
+                        color: '#475569',
+                        background: 'rgba(102, 126, 234, 0.05)',
+                        padding: '1rem',
+                        borderRadius: '8px'
+                      }}>{children}</blockquote>
+                    }}
+                  >
+                    {analysis.insights}
+                  </ReactMarkdown>
                 </div>
               </div>
             </div>

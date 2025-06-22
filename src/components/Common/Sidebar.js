@@ -1,262 +1,156 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '@clerk/clerk-react';
 import { 
-  BarChart3, 
-  FileSpreadsheet, 
-  Calendar, 
-  Activity,
-  ChevronRight,
-  Plus
+  Menu, X, FileText, FolderOpen, ArrowRight,
+  BarChart3, Plus
 } from 'lucide-react';
 
-const Sidebar = ({ analyses, onAnalysisClick, currentAnalysisId }) => {
+const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { userId } = useAuth();
+  const { analysisId: currentAnalysisId } = useParams();
+  const [analyses, setAnalyses] = useState([]);
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return 'Today';
-    if (diffDays === 2) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays - 1} days ago`;
-    return date.toLocaleDateString();
+  useEffect(() => {
+    if (userId) {
+      fetchAnalyses();
+    }
+  }, [userId]);
+
+  const fetchAnalyses = async () => {
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses`, {
+        headers: { 'x-user-id': userId }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAnalyses(data.analyses || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch analyses:', error);
+    }
   };
 
-  const getFileIcon = (fileName) => {
-    const extension = fileName.split('.').pop().toLowerCase();
-    if (extension === 'csv') {
-      return <FileSpreadsheet size={16} color="#84cc16" />;
-    } else if (['xlsx', 'xls'].includes(extension)) {
-      return <FileSpreadsheet size={16} color="#3b82f6" />;
-    }
-    return <FileSpreadsheet size={16} color="#6b7280" />;
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'completed': return '#10b981';
-      case 'processing': return '#f59e0b';
-      case 'error': return '#ef4444';
-      default: return '#6b7280';
-    }
+  const handleAnalysisClick = (analysis) => {
+    navigate(`/analysis/${analysis._id}`, { state: { analysis } });
+    if (onClose) onClose();
   };
 
   return (
-    <div className="sidebar">
-      {/* Header */}
-      <div className="sidebar-header">
-        <div style={{
-          width: '32px',
-          height: '32px',
-          background: 'linear-gradient(135deg, #84cc16, #65a30d)',
-          borderRadius: '8px',
+    <>
+      <div 
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          height: '100vh',
+          width: '320px',
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.3)',
+          boxShadow: '4px 0 32px rgba(0, 0, 0, 0.08)',
+          transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.3s ease',
+          zIndex: 999,
+          overflow: 'hidden',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white'
-        }}>
-          <BarChart3 size={20} />
-        </div>
-        <div>
-          <div className="sidebar-title">Marketing Analyzer</div>
-          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-            Analysis Dashboard
+          flexDirection: 'column'
+        }}
+      >
+        <div style={{ padding: '2rem 1.5rem 1rem', borderBottom: '1px solid rgba(255, 255, 255, 0.3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FolderOpen size={20} /> My Analyses
+            </h2>
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <X size={20} />
+            </button>
           </div>
+          <button
+            onClick={() => navigate('/analysis')}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem',
+              background: 'linear-gradient(135deg, #000, #333)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              fontWeight: 500
+            }}
+          >
+            <Plus size={16} /> New Analysis
+          </button>
         </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div style={{ marginBottom: '2rem' }}>
-        <button
-          onClick={() => navigate('/dashboard')}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1rem',
-            background: 'linear-gradient(135deg, #84cc16, #65a30d)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            fontWeight: '500',
-            marginBottom: '0.5rem'
-          }}
-        >
-          <Plus size={16} />
-          New Analysis
-        </button>
-        
-        <button
-          onClick={() => navigate('/dashboard')}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.75rem 1rem',
-            background: 'white',
-            color: '#374151',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            fontWeight: '500'
-          }}
-        >
-          <BarChart3 size={16} />
-          Dashboard
-        </button>
-      </div>
-
-      {/* Analyses List */}
-      <div className="sidebar-section">
-        <div className="sidebar-section-title">
-          Recent Analyses
-        </div>
-        
-        {analyses && analyses.length > 0 ? (
+        <div style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {analyses.slice(0, 10).map((analysis) => (
+            {analyses.length > 0 ? analyses.map((item) => (
               <div
-                key={analysis._id}
-                className={`analysis-item ${analysis._id === currentAnalysisId ? 'active' : ''}`}
-                onClick={() => onAnalysisClick(analysis._id)}
-              >
-                <div style={{
+                key={item._id}
+                onClick={() => handleAnalysisClick(item)}
+                style={{
                   display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.75rem'
-                }}>
-                  <div style={{
-                    marginTop: '0.125rem',
-                    flexShrink: 0
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.75rem 1rem',
+                  background: item._id === currentAnalysisId ? 'linear-gradient(135deg, #667eea20, #764ba220)' : 'rgba(255, 255, 255, 0.7)',
+                  border: item._id === currentAnalysisId ? '2px solid rgba(102, 126, 234, 0.3)' : '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <FileText size={16} color={item._id === currentAnalysisId ? "#667eea" : "#64748b"} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{
+                    fontSize: '0.85rem',
+                    fontWeight: item._id === currentAnalysisId ? '600' : '500',
+                    color: item._id === currentAnalysisId ? '#667eea' : '#374151',
+                    margin: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
                   }}>
-                    {getFileIcon(analysis.fileName)}
-                  </div>
-                  
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="analysis-item-name">
-                      {analysis.fileName}
-                    </div>
-                    <div className="analysis-item-meta">
-                      <div style={{ 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginTop: '0.25rem'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          <Calendar size={10} />
-                          {formatDate(analysis.createdAt)}
-                        </div>
-                        
-                        <div style={{
-                          width: '8px',
-                          height: '8px',
-                          borderRadius: '50%',
-                          background: getStatusColor(analysis.status),
-                          flexShrink: 0
-                        }} />
-                      </div>
-                      
-                      {analysis.fileSize && (
-                        <div style={{ 
-                          fontSize: '0.65rem', 
-                          color: '#9ca3af',
-                          marginTop: '0.125rem'
-                        }}>
-                          {(analysis.fileSize / 1024).toFixed(1)} KB
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {analysis._id === currentAnalysisId && (
-                    <ChevronRight size={12} color="#84cc16" />
-                  )}
+                    {item.fileName}
+                  </p>
+                  <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+                    {new Date(item.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
+                {item._id !== currentAnalysisId && <ArrowRight size={14} color="#64748b" />}
               </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{
-            padding: '2rem 1rem',
-            textAlign: 'center',
-            color: '#6b7280'
-          }}>
-            <FileSpreadsheet size={32} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
-            <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-              No analyses yet
-            </div>
-            <div style={{ fontSize: '0.75rem', lineHeight: 1.4 }}>
-              Upload your first campaign data to get started
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Quick Stats */}
-      {analyses && analyses.length > 0 && (
-        <div className="sidebar-section" style={{ marginTop: 'auto' }}>
-          <div className="sidebar-section-title">
-            Quick Stats
-          </div>
-          
-          <div style={{
-            background: '#f9fafb',
-            borderRadius: '8px',
-            padding: '1rem',
-            border: '1px solid #e5e7eb'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Total Files</span>
-              <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>{analyses.length}</span>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Completed</span>
-              <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>
-                {analyses.filter(a => a.status === 'completed').length}
-              </span>
-            </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>This Week</span>
-              <span style={{ fontSize: '0.75rem', fontWeight: '600' }}>
-                {analyses.filter(a => {
-                  const uploadDate = new Date(a.uploadDate);
-                  const weekAgo = new Date();
-                  weekAgo.setDate(weekAgo.getDate() - 7);
-                  return uploadDate > weekAgo;
-                }).length}
-              </span>
-            </div>
+            )) : (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem', color: '#64748b' }}>
+                <FolderOpen size={32} style={{ margin: '0 auto 1rem', opacity: 0.5 }} />
+                <p>No analyses found.</p>
+              </div>
+            )}
           </div>
         </div>
+      </div>
+      {isOpen && (
+        <div 
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.2)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 998
+          }}
+        />
       )}
-
-      {/* Footer */}
-      <div style={{
-        padding: '1rem 0',
-        borderTop: '1px solid #e5e7eb',
-        marginTop: 'auto'
-      }}>
-        <div style={{ 
-          fontSize: '0.65rem', 
-          color: '#9ca3af',
-          textAlign: 'center'
-        }}>
-          Marketing Analyzer v1.0
-          <br />
-          Built for performance marketers
-        </div>
-      </div>
-    </div>
+    </>
   );
 };
 

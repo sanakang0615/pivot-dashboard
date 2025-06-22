@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Menu, X, FileText, FolderOpen, ArrowRight, AlertTriangle } from 'lucide-react';
 import ColumnMappingModal from '../components/ColumnMappingModal';
 import HeatmapChart from '../components/HeatmapChart';
+import Sidebar from '../components/Common/Sidebar';
 
 const Analysis = () => {
   const { userId, isSignedIn } = useAuth();
@@ -18,7 +19,6 @@ const Analysis = () => {
   
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [analysisList, setAnalysisList] = useState([]);
   
   // Login modal state
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -26,25 +26,9 @@ const Analysis = () => {
   // Fetch user's analysis list
   useEffect(() => {
     if (isSignedIn && userId) {
-      fetchAnalysisList();
+      // The Sidebar component now fetches its own data
     }
   }, [isSignedIn, userId]);
-
-  const fetchAnalysisList = async () => {
-    try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses`, {
-        headers: {
-          'x-user-id': userId
-        }
-      });
-      const result = await response.json();
-      if (result.success) {
-        setAnalysisList(result.analyses || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch analysis list:', error);
-    }
-  };
 
   // Handle file upload with login check
   const handleFileUpload = async (file) => {
@@ -141,31 +125,7 @@ const Analysis = () => {
       
       console.log('Analysis completed:', result);
 
-      // Save analysis results to database
-      const saveResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/save`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId
-        },
-        body: JSON.stringify({
-          analysisId: result.analysisId,
-          fileName: result.fileName,
-          metadata: result.metadata,
-          pivotTables: result.pivotTables,
-          insights: result.insights,
-          createdAt: new Date().toISOString()
-        })
-      });
-
-      const saveResult = await saveResponse.json();
-      
-      if (!saveResult.success) {
-        console.error('Failed to save analysis results:', saveResult.error);
-      }
-
       setAnalysisResult(result);
-      fetchAnalysisList(); // Refresh analysis list
       
       // Navigate to the analysis result page
       if (result.analysisId) {
@@ -173,9 +133,7 @@ const Analysis = () => {
         setTimeout(() => {
           navigate(`/analysis/${result.analysisId}`, { 
             state: { 
-              analysis: result,
-              pivotTables: result.pivotTables,
-              insights: result.insights
+              analysis: result
             }
           });
         }, 1000);
@@ -214,6 +172,7 @@ const Analysis = () => {
       fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       position: 'relative'
     }}>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Global Auth Header */}
       <div style={{
         width: '100%',
@@ -290,284 +249,21 @@ const Analysis = () => {
         </div>
 
         {/* Right side - Auth */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '1rem' 
-        }}>
-          {!isSignedIn ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {isSignedIn ? (
+            <UserButton afterSignOutUrl="/" />
+          ) : (
             <>
-              <span style={{ 
-                color: '#64748b', 
-                fontSize: '0.95rem', 
-                fontWeight: '500' 
-              }}>
-                Not signed in
-              </span>
               <SignInButton mode="modal">
-                <button style={{
-                  padding: '0.5rem 1.25rem',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: '500',
-                  color: '#374151',
-                  backdropFilter: 'blur(10px)',
-                  transition: 'all 0.2s ease'
-                }}>
-                  Sign In
-                </button>
+                <button className="auth-button">Log In</button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <button style={{
-                  padding: '0.5rem 1.25rem',
-                  background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: '600',
-                  color: 'white',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  transition: 'all 0.2s ease'
-                }}>
-                  Get Started
-                </button>
+                <button className="auth-button primary">Sign Up</button>
               </SignUpButton>
             </>
-          ) : (
-            <UserButton 
-              afterSignOutUrl="/" 
-              appearance={{
-                elements: {
-                  avatarBox: {
-                    width: '36px',
-                    height: '36px'
-                  }
-                }
-              }}
-            />
           )}
         </div>
       </div>
-
-      {/* Sidebar */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        height: '100vh',
-        width: '320px',
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(20px)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.3)',
-        boxShadow: '4px 0 32px rgba(0, 0, 0, 0.08)',
-        transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-        transition: 'transform 0.3s ease',
-        zIndex: 999,
-        overflow: 'hidden'
-      }}>
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          {/* Sidebar Header */}
-          <div style={{
-            padding: '2rem 1.5rem 1rem',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.3)'
-          }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '1rem'
-            }}>
-              <h2 style={{
-                fontSize: '1.2rem',
-                fontWeight: '700',
-                color: '#1e293b',
-                margin: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <span className="tossface">📁</span>
-                My Analyses
-              </h2>
-              <button
-                onClick={() => setSidebarOpen(false)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
-                  background: 'transparent',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.background = 'rgba(0, 0, 0, 0.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.background = 'transparent';
-                }}
-              >
-                <X size={18} color="#64748b" />
-              </button>
-            </div>
-          </div>
-
-          {/* Sidebar Content */}
-          <div style={{
-            flex: 1,
-            padding: '1rem',
-            overflowY: 'auto'
-          }}>
-            {!isSignedIn ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '3rem 1rem',
-                color: '#64748b'
-              }}>
-                <div style={{
-                  width: '80px',
-                  height: '80px',
-                  margin: '0 auto 2rem',
-                  background: 'linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%)',
-                  borderRadius: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <span className="tossface" style={{ fontSize: '2rem' }}>🔒</span>
-                </div>
-                <h3 style={{
-                  fontSize: '1.1rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '0.5rem'
-                }}>
-                  Sign in Required
-                </h3>
-                <p style={{
-                  fontSize: '0.9rem',
-                  lineHeight: '1.5',
-                  marginBottom: '2rem'
-                }}>
-                  Please sign in to view your analysis history and save your work.
-                </p>
-                <SignInButton mode="modal">
-                  <button style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.75rem 1.5rem',
-                    background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '10px',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    margin: '0 auto',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-                  }}>
-                    <span className="tossface">🚀</span>
-                    Sign In Now
-                  </button>
-                </SignInButton>
-              </div>
-            ) : (
-              <div>
-                {/* Analysis List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {analysisList.length === 0 ? (
-                    <div style={{
-                      textAlign: 'center',
-                      padding: '2rem 1rem',
-                      color: '#64748b'
-                    }}>
-                      <span className="tossface" style={{ 
-                        fontSize: '2rem',
-                        display: 'block',
-                        marginBottom: '1rem'
-                      }}>📊</span>
-                      <p style={{
-                        fontSize: '0.9rem',
-                        lineHeight: '1.5'
-                      }}>
-                        No analyses yet. Upload your first file to get started!
-                      </p>
-                    </div>
-                  ) : (
-                    analysisList.map((analysis, index) => (
-                      <div key={index} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        padding: '0.75rem 1rem',
-                        background: 'rgba(255, 255, 255, 0.7)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        borderRadius: '10px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onClick={() => navigate(`/analysis/${analysis.id}`)}
-                      onMouseEnter={(e) => {
-                        e.target.style.background = 'rgba(255, 255, 255, 0.9)';
-                        e.target.style.transform = 'translateX(4px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = 'rgba(255, 255, 255, 0.7)';
-                        e.target.style.transform = 'translateX(0)';
-                      }}>
-                        <FileText size={16} color="#64748b" />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{
-                            fontSize: '0.85rem',
-                            fontWeight: '500',
-                            color: '#374151',
-                            margin: 0,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {analysis.fileName || `Analysis ${index + 1}`}
-                          </p>
-                          <p style={{
-                            fontSize: '0.75rem',
-                            color: '#64748b',
-                            margin: 0
-                          }}>
-                            {new Date(analysis.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <ArrowRight size={14} color="#64748b" />
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.2)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 998
-          }}
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
 
       {/* Main Content */}
       <main style={{

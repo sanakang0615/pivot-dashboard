@@ -740,6 +740,13 @@ app.post('/api/analysis/execute', async (req, res) => {
 
     // 1단계: 피벗 테이블 생성
     const pivotTables = generatePivotTables(fileData.data, columnMapping);
+    console.log('📊 Generated pivotTables:', {
+      hasData: !!pivotTables,
+      keys: Object.keys(pivotTables || {}),
+      campaignCount: pivotTables?.Campaign?.length || 0,
+      adSetCount: pivotTables?.['Ad Set']?.length || 0,
+      adCount: pivotTables?.Ad?.length || 0
+    });
     
     // 2단계: 히트맵 생성 (단순 버전)
     const heatmap = generateSimpleHeatmap(pivotTables.Campaign || []);
@@ -825,12 +832,13 @@ ${JSON.stringify(pivotTables.Ad, null, 2)}
     if (Analysis && mongoose.connection.readyState === 1) {
       try {
         console.log('Creating analysis document...');
+        console.log('📊 pivotTables structure:', JSON.stringify(pivotTables, null, 2));
         analysisDoc = new Analysis({
           userId,
           fileName: fileData.metadata.fileName,
           fileSize: fileData.metadata.fileSize,
           rawData: fileData.data,
-          pivotData: pivotTables,
+          pivotData: pivotTables || {},
           insights,
           status: 'completed',
           metadata: {
@@ -1031,7 +1039,7 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
           fileName: originalname,
           fileSize: size,
           rawData,
-          pivotData,
+          pivotData: pivotData || {},
           classifiedData,
           insights,
           status: 'completed',
@@ -1055,7 +1063,7 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
       analysisId: analysisDoc?._id || `temp_${Date.now()}`,
       fileName: originalname,
       rawData,
-      pivotData,
+      pivotTables: pivotData || {},
       classifiedData,
       insights
     });
@@ -1279,6 +1287,14 @@ app.get('/api/analysis/:id', async (req, res) => {
       });
     }
 
+    console.log('📊 Retrieved analysis:', {
+      id: analysis._id,
+      fileName: analysis.fileName,
+      pivotDataLength: analysis.pivotData ? Object.keys(analysis.pivotData).length : 0,
+      pivotDataKeys: analysis.pivotData ? Object.keys(analysis.pivotData) : [],
+      hasCampaign: analysis.pivotData && analysis.pivotData.Campaign ? analysis.pivotData.Campaign.length : 0
+    });
+
     res.json({
       success: true,
       analysis: {
@@ -1286,7 +1302,7 @@ app.get('/api/analysis/:id', async (req, res) => {
         fileName: analysis.fileName,
         fileSize: analysis.fileSize,
         rawData: analysis.rawData || [],
-        pivotData: analysis.pivotData || [],
+        pivotTables: analysis.pivotData || {},
         classifiedData: analysis.classifiedData || [],
         insights: analysis.insights || '',
         heatmapImage: analysis.heatmapImage || '',
@@ -1376,7 +1392,7 @@ app.post('/api/analysis/save', async (req, res) => {
       { 
         fileName,
         metadata: metadata || {},
-        pivotData: pivotTables || [],
+        pivotData: pivotTables || {},
         insights: insights || '',
         heatmapImage: heatmapImage || '',
         status: 'completed',
