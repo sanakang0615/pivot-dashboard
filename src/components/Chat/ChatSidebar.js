@@ -151,6 +151,26 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   };
 
   const handleContextSelect = (context) => {
+    const isAdding = !selectedContexts.some(c => c.id === context.id);
+
+    if (isAdding) {
+      console.log(`[Context Added] ✅ ${context.name}`);
+      let contextText = `\n${context.name}:\n`;
+      if (context.type === 'data' || context.type === 'pivot') {
+        const limitedData = Array.isArray(context.data) 
+          ? context.data.slice(0, 20)
+          : context.data;
+        contextText += JSON.stringify(limitedData, null, 2);
+      } else if (context.type === 'report') {
+        contextText += context.data;
+      } else if (context.type === 'visualization') {
+        contextText += `Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`;
+      }
+      console.log('📋 Text to be added to prompt:', contextText);
+    } else {
+      console.log(`[Context Removed] ❌ ${context.name}`);
+    }
+    
     setSelectedContexts(prev => {
       const exists = prev.find(c => c.id === context.id);
       if (exists) {
