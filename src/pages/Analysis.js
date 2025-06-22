@@ -274,28 +274,7 @@ const Analysis = () => {
         zIndex: 1
       }}>
         {/* Background Effects */}
-        <div style={{
-          position: 'absolute',
-          top: '10%',
-          left: '20%',
-          width: '300px',
-          height: '300px',
-          background: 'linear-gradient(135deg, #667eea40, #764ba240)',
-          borderRadius: '50%',
-          filter: 'blur(100px)',
-          zIndex: 0
-        }} />
-        <div style={{
-          position: 'absolute',
-          top: '60%',
-          right: '10%',
-          width: '200px',
-          height: '200px',
-          background: 'linear-gradient(135deg, #84cc1640, #65a30d40)',
-          borderRadius: '50%',
-          filter: 'blur(80px)',
-          zIndex: 0
-        }} />
+        {/* Removed background gradient circles */}
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           {/* Hero Section */}

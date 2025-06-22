@@ -33,7 +33,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   };
 
   const handleAnalysisClick = (analysis) => {
-    navigate(`/analysis/${analysis._id}`, { state: { analysis } });
+    navigate(`/analysis/${analysis._id}`);
     if (onClose) onClose();
   };
 

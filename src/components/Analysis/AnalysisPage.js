@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/clerk-react';
-import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3, Loader2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { usePDF } from 'react-to-pdf';
 import HeatmapChart from '../HeatmapChart';
 import Sidebar from '../Common/Sidebar';
 
@@ -16,7 +17,21 @@ const AnalysisPage = () => {
   const [error, setError] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [analysisList, setAnalysisList] = useState([]);
+  const [exporting, setExporting] = useState(false);
   const heatmapRef = useRef(null);
+  const contentRef = useRef(null);
+  
+  // PDF export hook
+  const { toPDF, targetRef } = usePDF({
+    filename: analysis?.fileName ? `${analysis.fileName}_analysis.pdf` : 'analysis_report.pdf',
+    page: {
+      margin: 20,
+      format: 'a4',
+      orientation: 'portrait'
+    },
+    // Scale up the PDF content to make it larger
+    scale: 1.1
+  });
 
   // Clerk 인증 상태 디버깅
   useEffect(() => {
@@ -32,13 +47,14 @@ const AnalysisPage = () => {
 
     // Case 1: New analysis result from navigation state.
     // It has `analysisId` and `pivotTables`, but no `_id` yet.
-    if (analysisFromState && analysisFromState.analysisId === analysisId && analysisFromState.pivotTables) {
-      console.log('📊 Using analysis from navigation state:', analysisFromState);
+    if (analysisFromState && analysisFromState.analysisId === analysisId && analysisFromState.pivotTables && !analysisFromState._id) {
+      console.log('📊 Using analysis from navigation state (new analysis):', analysisFromState);
       setAnalysis(analysisFromState);
       setLoading(false);
     } 
-    // Case 2: Existing analysis, refresh, or direct navigation. Fetch from server.
+    // Case 2: Existing analysis, refresh, direct navigation, or sidebar click. Fetch from server.
     else if (analysisId && userId && isSignedIn) {
+      console.log('📊 Fetching analysis from server for ID:', analysisId);
       fetchAnalysis();
     } else if (!isSignedIn) {
       navigate('/');
@@ -183,6 +199,37 @@ const AnalysisPage = () => {
       }
     } catch (error) {
       console.error('Error saving analysis:', error);
+    }
+  };
+
+  // PDF Export 함수
+  const handleExportPDF = async () => {
+    if (!analysis) return;
+    
+    setExporting(true);
+    try {
+      // 히트맵 이미지가 있다면 먼저 생성
+      if (heatmapRef.current && !analysis.heatmapImage) {
+        const heatmapImage = heatmapRef.current.getImageAsBase64();
+        if (heatmapImage) {
+          // 히트맵 이미지를 analysis 객체에 임시로 추가
+          setAnalysis(prev => ({
+            ...prev,
+            heatmapImage
+          }));
+          // 이미지 렌더링을 위한 짧은 대기
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      // PDF 생성
+      await toPDF();
+      console.log('✅ PDF exported successfully');
+    } catch (error) {
+      console.error('❌ Error exporting PDF:', error);
+      alert('PDF export failed. Please try again.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -643,9 +690,11 @@ const AnalysisPage = () => {
             onMouseLeave={(e) => {
               e.target.style.background = 'rgba(255, 255, 255, 0.8)';
             }}
+            onClick={handleExportPDF}
+            disabled={exporting}
           >
             <Download size={16} />
-            Export
+            {exporting ? 'Exporting...' : 'Export'}
           </button>
           
           <UserButton 
@@ -663,36 +712,53 @@ const AnalysisPage = () => {
       </div>
 
       {/* Main Content */}
-      <main style={{
-        padding: '2rem',
-        maxWidth: '1400px',
-        margin: '0 auto',
-        position: 'relative',
-        zIndex: 1
-      }}>
+      <main 
+        ref={targetRef}
+        style={{
+          padding: '2rem',
+          maxWidth: '1400px',
+          margin: '0 auto',
+          position: 'relative',
+          zIndex: 1,
+          // PDF 전용 스타일
+          '@media print': {
+            background: 'white !important',
+            color: 'black !important',
+            boxShadow: 'none !important',
+            border: 'none !important'
+          }
+        }}
+      >
+        {/* PDF 전용 헤더 */}
+        <div style={{
+          display: 'none',
+          '@media print': {
+            display: 'block',
+            textAlign: 'center',
+            marginBottom: '2rem',
+            paddingBottom: '1rem',
+            borderBottom: '2px solid #000'
+          }
+        }}>
+          <h1 style={{
+            fontSize: '2rem',
+            fontWeight: 'bold',
+            margin: 0,
+            color: '#000'
+          }}>
+            AdOasis Analysis Report
+          </h1>
+          <p style={{
+            fontSize: '1rem',
+            margin: '0.5rem 0 0 0',
+            color: '#666'
+          }}>
+            {analysis?.fileName} - {new Date().toLocaleDateString()}
+          </p>
+        </div>
+
         {/* Background Effects */}
-        <div style={{
-          position: 'absolute',
-          top: '10%',
-          left: '20%',
-          width: '300px',
-          height: '300px',
-          background: 'linear-gradient(135deg, #667eea40, #764ba240)',
-          borderRadius: '50%',
-          filter: 'blur(100px)',
-          zIndex: 0
-        }} />
-        <div style={{
-          position: 'absolute',
-          top: '60%',
-          right: '10%',
-          width: '200px',
-          height: '200px',
-          background: 'linear-gradient(135deg, #84cc1640, #65a30d40)',
-          borderRadius: '50%',
-          filter: 'blur(80px)',
-          zIndex: 0
-        }} />
+        {/* Removed background gradient circles */}
 
         <div style={{ position: 'relative', zIndex: 1 }}>
           {/* Analysis Header */}
@@ -703,7 +769,14 @@ const AnalysisPage = () => {
             padding: '2rem',
             border: '1px solid rgba(255, 255, 255, 0.3)',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-            marginBottom: '2rem'
+            marginBottom: '2rem',
+            '@media print': {
+              background: 'white !important',
+              border: '1px solid #000 !important',
+              boxShadow: 'none !important',
+              borderRadius: '8px !important',
+              pageBreakAfter: 'always'
+            }
           }}>
             <h2 style={{
               fontSize: 'clamp(1.5rem, 3vw, 2rem)',
@@ -862,7 +935,15 @@ const AnalysisPage = () => {
                 backdropFilter: 'blur(20px)',
                 borderRadius: '20px',
                 border: '1px solid rgba(255, 255, 255, 0.3)',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+                '@media print': {
+                  background: 'white !important',
+                  border: '1px solid #000 !important',
+                  boxShadow: 'none !important',
+                  borderRadius: '8px !important',
+                  pageBreakInside: 'avoid',
+                  marginBottom: '1rem'
+                }
               }}>
                 <div style={{ padding: '2rem 2rem 1rem' }}>
                   <h3 style={{
@@ -925,7 +1006,15 @@ const AnalysisPage = () => {
               backdropFilter: 'blur(20px)',
               borderRadius: '20px',
               border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+              '@media print': {
+                background: 'white !important',
+                border: '1px solid #000 !important',
+                boxShadow: 'none !important',
+                borderRadius: '8px !important',
+                pageBreakInside: 'avoid',
+                marginBottom: '1rem'
+              }
             }}>
               <div style={{ padding: '2rem 2rem 1rem' }}>
                 <h3 style={{
@@ -1035,9 +1124,57 @@ const AnalysisPage = () => {
           )}
         </div>
       </main>
+      
+      {exporting && <ExportProgressModal />}
     </div>
   );
 };
+
+const ExportProgressModal = () => (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(255, 255, 255, 0.5)',
+    backdropFilter: 'blur(8px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10001,
+    opacity: 1,
+    transition: 'opacity 0.3s ease',
+  }}>
+    <style>
+      {`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .spinning-loader {
+          animation: spin 1s linear infinite;
+        }
+      `}
+    </style>
+    <div style={{
+      background: 'rgba(0, 0, 0, 0.8)',
+      color: 'white',
+      padding: '2.5rem 3rem',
+      borderRadius: '20px',
+      textAlign: 'center',
+      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.2)',
+    }}>
+      <Loader2 className="spinning-loader" size={48} style={{ marginBottom: '1.5rem' }} />
+      <h3 style={{ fontSize: '1.2rem', margin: '0 0 0.5rem 0', fontWeight: '600' }}>
+        Generating Report PDF...
+      </h3>
+      <p style={{ margin: 0, opacity: 0.8, fontSize: '0.95rem' }}>
+        Please wait a moment, this may take some time.
+      </p>
+    </div>
+  </div>
+);
 
 // Pivot Table Card Component
 const PivotTableCard = ({ level, data, formatNumber }) => (
@@ -1047,7 +1184,15 @@ const PivotTableCard = ({ level, data, formatNumber }) => (
     borderRadius: '20px',
     border: '1px solid rgba(255, 255, 255, 0.3)',
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    '@media print': {
+      background: 'white !important',
+      border: '1px solid #000 !important',
+      boxShadow: 'none !important',
+      borderRadius: '8px !important',
+      pageBreakInside: 'avoid',
+      marginBottom: '1rem'
+    }
   }}>
     <div style={{ padding: '1.5rem 2rem 1rem' }}>
       <h3 style={{
