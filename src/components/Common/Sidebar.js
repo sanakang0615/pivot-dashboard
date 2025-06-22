@@ -108,11 +108,13 @@ const Sidebar = ({ isOpen, onClose }) => {
         setRenameModal(null);
         setNewFileName('');
       } else {
-        alert('Failed to rename analysis');
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Rename failed:', res.status, errorData);
+        alert(`Failed to rename analysis: ${res.status} - ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Failed to rename analysis:', error);
-      alert('Failed to rename analysis');
+      alert(`Failed to rename analysis: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
