@@ -10,6 +10,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedContexts, setSelectedContexts] = useState([]);
+  const [allUsedContexts, setAllUsedContexts] = useState([]);
   const [showContextSelector, setShowContextSelector] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
@@ -52,7 +53,22 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setMessages(result.messages || []);
+          const loadedMessages = result.messages || [];
+          setMessages(loadedMessages);
+          
+          // Restore all contexts used in previous messages
+          const usedContexts = [];
+          loadedMessages.forEach(message => {
+            if (message.contexts && Array.isArray(message.contexts)) {
+              message.contexts.forEach(context => {
+                if (!usedContexts.some(c => c.id === context.id)) {
+                  usedContexts.push(context);
+                }
+              });
+            }
+          });
+          setAllUsedContexts(usedContexts);
+          console.log('📚 Restored contexts from chat history:', usedContexts.map(c => c.name));
         }
       }
     } catch (error) {
@@ -89,6 +105,14 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       timestamp: new Date().toISOString()
     };
 
+    // Add new contexts to the accumulated list
+    const updatedAllUsedContexts = [...allUsedContexts];
+    selectedContexts.forEach(context => {
+      if (!updatedAllUsedContexts.some(c => c.id === context.id)) {
+        updatedAllUsedContexts.push(context);
+      }
+    });
+
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInputValue('');
@@ -96,10 +120,10 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
     setIsLoading(true);
 
     try {
-      // Prepare the request body
+      // Prepare the request body with all accumulated contexts
       const requestBody = {
         message: userMessage.content,
-        contexts: userMessage.contexts,
+        contexts: updatedAllUsedContexts, // Send all contexts used in conversation
         analysisData: sanitizeAnalysisData(analysisData),
         chatHistory: messages.slice(-10) // Last 10 messages for context
       };
@@ -107,7 +131,8 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       // Log the complete prompt being sent to Gemini API
       console.log('🚀 Sending to Gemini API:');
       console.log('📝 User Message:', requestBody.message);
-      console.log('🔗 Selected Contexts:', requestBody.contexts.map(c => c.name));
+      console.log('🔗 Current Selected Contexts:', userMessage.contexts.map(c => c.name));
+      console.log('📚 All Used Contexts:', requestBody.contexts.map(c => c.name));
       console.log('📊 Analysis Data:', requestBody.analysisData);
       console.log('💬 Chat History:', requestBody.chatHistory.length, 'messages');
       console.log('📦 Full Request Body:', JSON.stringify(requestBody, null, 2));
@@ -155,6 +180,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
 
           const finalMessages = [...newMessages, aiMessage];
           setMessages(finalMessages);
+          setAllUsedContexts(updatedAllUsedContexts); // Update the accumulated contexts
           saveChatHistory(finalMessages);
         } else {
           throw new Error(result.error || 'API returned success: false');
@@ -447,6 +473,54 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* All Used Contexts Summary */}
+        {allUsedContexts.length > 0 && (
+          <div style={{
+            marginBottom: '0.75rem',
+            padding: '0.75rem',
+            background: 'rgba(16, 185, 129, 0.05)',
+            border: '1px solid rgba(16, 185, 129, 0.1)',
+            borderRadius: '8px'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '0.5rem'
+            }}>
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                color: '#059669'
+              }}>
+                📚 Available Contexts ({allUsedContexts.length})
+              </span>
+            </div>
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.25rem'
+            }}>
+              {allUsedContexts.map((context) => (
+                <div
+                  key={context.id}
+                  style={{
+                    padding: '0.25rem 0.5rem',
+                    background: 'rgba(16, 185, 129, 0.1)',
+                    border: '1px solid rgba(16, 185, 129, 0.2)',
+                    borderRadius: '4px',
+                    fontSize: '0.7rem',
+                    color: '#059669',
+                    opacity: selectedContexts.some(c => c.id === context.id) ? 1 : 0.7
+                  }}
+                >
+                  {context.name}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
