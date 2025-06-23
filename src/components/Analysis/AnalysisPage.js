@@ -737,7 +737,19 @@ const AnalysisPage = () => {
               elements: {
                 avatarBox: {
                   width: '36px',
-                  height: '36px'
+                  height: '36px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.2s ease'
+                },
+                userButtonPopoverCard: {
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
                 }
               }
             }}
