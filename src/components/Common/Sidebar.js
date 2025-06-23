@@ -13,6 +13,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [analyses, setAnalyses] = useState([]);
   const [menuOpen, setMenuOpen] = useState(null);
   const [renameModal, setRenameModal] = useState(null);
+  const [deleteModal, setDeleteModal] = useState(null);
   const [newFileName, setNewFileName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,23 +54,26 @@ const Sidebar = ({ isOpen, onClose }) => {
   };
 
   const handleDelete = async (analysis) => {
-    if (!window.confirm(`Are you sure you want to delete "${analysis.fileName}"? This action cannot be undone.`)) {
-      return;
-    }
+    setDeleteModal(analysis);
+    setMenuOpen(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal) return;
     
     setIsLoading(true);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${analysis._id}`, {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${deleteModal._id}`, {
         method: 'DELETE',
         headers: { 'x-user-id': userId }
       });
       
       if (res.ok) {
         // Remove from local state
-        setAnalyses(analyses.filter(a => a._id !== analysis._id));
+        setAnalyses(analyses.filter(a => a._id !== deleteModal._id));
         
         // If this was the current analysis, navigate to home
-        if (analysis._id === currentAnalysisId) {
+        if (deleteModal._id === currentAnalysisId) {
           navigate('/');
         }
       } else {
@@ -80,7 +84,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       alert('Failed to delete analysis');
     } finally {
       setIsLoading(false);
-      setMenuOpen(null);
+      setDeleteModal(null);
     }
   };
 
@@ -350,13 +354,30 @@ const Sidebar = ({ isOpen, onClose }) => {
               border: '1px solid rgba(255, 255, 255, 0.3)',
               borderRadius: '12px',
               padding: '2rem',
-              minWidth: '300px',
+              minWidth: '350px',
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
             }}
           >
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', fontWeight: '600', color: '#1e293b' }}>
-              Rename Analysis
-            </h3>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem'
+              }}>
+                <Edit size={24} color="#8b5cf6" />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: '600', color: '#1e293b' }}>
+                Rename Analysis
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5' }}>
+                Enter a new name for your analysis
+              </p>
+            </div>
             <input
               type="text"
               value={newFileName}
@@ -366,23 +387,36 @@ const Sidebar = ({ isOpen, onClose }) => {
                 width: '100%',
                 padding: '0.75rem',
                 border: '1px solid rgba(0, 0, 0, 0.2)',
-                borderRadius: '6px',
+                borderRadius: '8px',
                 fontSize: '0.9rem',
-                marginBottom: '1rem'
+                marginBottom: '1.5rem',
+                outline: 'none',
+                transition: 'all 0.2s ease'
+              }}
+              onFocus={(e) => {
+                e.target.style.border = '1px solid rgba(139, 92, 246, 0.5)';
+                e.target.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.15)';
+              }}
+              onBlur={(e) => {
+                e.target.style.border = '1px solid rgba(0, 0, 0, 0.2)';
+                e.target.style.boxShadow = 'none';
               }}
               placeholder="Enter new name..."
               autoFocus
             />
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
               <button
                 onClick={() => setRenameModal(null)}
+                disabled={isLoading}
                 style={{
-                  padding: '0.5rem 1rem',
+                  padding: '0.75rem 1.5rem',
                   background: 'transparent',
                   border: '1px solid rgba(0, 0, 0, 0.2)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem'
+                  borderRadius: '8px',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.9rem',
+                  color: '#374151',
+                  opacity: isLoading ? 0.5 : 1
                 }}
               >
                 Cancel
@@ -391,17 +425,124 @@ const Sidebar = ({ isOpen, onClose }) => {
                 onClick={handleRenameSubmit}
                 disabled={!newFileName.trim() || isLoading}
                 style={{
-                  padding: '0.5rem 1rem',
-                  background: '#667eea',
+                  padding: '0.75rem 1.5rem',
+                  background: '#8b5cf6',
                   border: 'none',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   cursor: newFileName.trim() && !isLoading ? 'pointer' : 'not-allowed',
                   fontSize: '0.9rem',
                   color: 'white',
-                  opacity: newFileName.trim() && !isLoading ? 1 : 0.5
+                  opacity: newFileName.trim() && !isLoading ? 1 : 0.5,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (newFileName.trim() && !isLoading) {
+                    e.target.style.background = '#7c3aed';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = '#8b5cf6';
                 }}
               >
                 {isLoading ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 10004,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onClick={() => setDeleteModal(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '12px',
+              padding: '2rem',
+              minWidth: '350px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem'
+              }}>
+                <Trash2 size={24} color="#8b5cf6" />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: '600', color: '#1e293b' }}>
+                Delete Analysis
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5' }}>
+                Are you sure you want to delete <strong>"{deleteModal.fileName}"</strong>?<br />
+                This action cannot be undone.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setDeleteModal(null)}
+                disabled={isLoading}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'transparent',
+                  border: '1px solid rgba(0, 0, 0, 0.2)',
+                  borderRadius: '8px',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.9rem',
+                  color: '#374151',
+                  opacity: isLoading ? 0.5 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={isLoading}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#8b5cf6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: '0.9rem',
+                  color: 'white',
+                  opacity: isLoading ? 0.5 : 1,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading) {
+                    e.target.style.background = '#7c3aed';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = '#8b5cf6';
+                }}
+              >
+                {isLoading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

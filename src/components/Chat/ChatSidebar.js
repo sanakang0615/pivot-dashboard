@@ -17,6 +17,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const [showContextSelector, setShowContextSelector] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -261,10 +262,10 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   };
 
   const handleDeleteChat = async () => {
-    if (!window.confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
-      return;
-    }
+    setDeleteModal(true);
+  };
 
+  const confirmDeleteChat = async () => {
     setIsDeleting(true);
     try {
       const currentAnalysisId = analysisData?._id || analysisData?.analysisId || analysisId;
@@ -301,6 +302,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       alert(`Failed to delete chat: ${error.message}`);
     } finally {
       setIsDeleting(false);
+      setDeleteModal(false);
     }
   };
 
@@ -717,6 +719,104 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 10004,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onClick={() => setDeleteModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '12px',
+              padding: '2rem',
+              minWidth: '350px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem'
+              }}>
+                <Trash2 size={24} color="#8b5cf6" />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: '600', color: '#1e293b' }}>
+                Delete Chat
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5' }}>
+                Are you sure you want to delete this chat?<br />
+                This action cannot be undone.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setDeleteModal(false)}
+                disabled={isDeleting}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'transparent',
+                  border: '1px solid rgba(0, 0, 0, 0.2)',
+                  borderRadius: '8px',
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  fontSize: '0.9rem',
+                  color: '#374151',
+                  opacity: isDeleting ? 0.5 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteChat}
+                disabled={isDeleting}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#8b5cf6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: isDeleting ? 'not-allowed' : 'pointer',
+                  fontSize: '0.9rem',
+                  color: 'white',
+                  opacity: isDeleting ? 0.5 : 1,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!isDeleting) {
+                    e.target.style.background = '#7c3aed';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = '#8b5cf6';
+                }}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -6,7 +6,7 @@ import {
   Upload, BarChart3, FileSpreadsheet, Plus, 
   Calendar, TrendingUp, Users, Target, Activity,
   MoreVertical, Edit3, Trash2, Download, Eye,
-  Search, Filter, Grid, List, Check, X
+  Search, Filter, Grid, List, Check, X, AlertTriangle
 } from 'lucide-react';
 import { FullPageLoader } from '../Common/LoadingSpinner';
 import DashboardLayout from './DashboardLayout';
@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
+  const [deleteModal, setDeleteModal] = useState(null);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -76,30 +77,30 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteAnalysis = async (analysisId, e) => {
-    e.stopPropagation();
-    
-    if (!window.confirm('Are you sure you want to delete this analysis? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteAnalysis = (analysis) => {
+    setDeleteModal(analysis);
+  };
 
+  const confirmDeleteAnalysis = async () => {
+    if (!deleteModal) return;
+    
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${analysisId}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${deleteModal._id}`, {
         method: 'DELETE',
-        headers: {
-          'x-user-id': userId,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'x-user-id': userId }
       });
 
-      if (res.ok) {
-        setAnalyses(prev => prev.filter(a => a._id !== analysisId));
+      if (response.ok) {
+        setAnalyses(analyses.filter(a => a._id !== deleteModal._id));
       } else {
-        throw new Error('Failed to delete analysis');
+        console.error('Failed to delete analysis');
+        alert('Failed to delete analysis');
       }
     } catch (error) {
       console.error('Error deleting analysis:', error);
-      alert('Failed to delete analysis. Please try again.');
+      alert('Failed to delete analysis');
+    } finally {
+      setDeleteModal(null);
     }
   };
 
@@ -178,290 +179,190 @@ const Dashboard = () => {
   return (
     <DashboardLayout>
       <div style={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #fafbff 0%, #f8fafc 50%, #f1f5f9 100%)'
+        padding: '2rem',
+        maxWidth: '1400px',
+        margin: '0 auto'
       }}>
         {/* Header */}
-        <header style={{
-          padding: '2rem 2rem 1rem',
-          background: 'rgba(255, 255, 255, 0.8)',
-          backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '2rem',
+          flexWrap: 'wrap',
+          gap: '1rem'
         }}>
+          <div>
+            <h1 style={{
+              fontSize: '2rem',
+              fontWeight: '700',
+              color: '#1e293b',
+              margin: '0 0 0.5rem 0'
+            }}>
+              My Analyses
+            </h1>
+            <p style={{
+              color: '#64748b',
+              margin: 0,
+              fontSize: '1rem'
+            }}>
+              {analyses.length} analysis{analyses.length !== 1 ? 'es' : ''} found
+            </p>
+          </div>
+
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: '1.5rem'
+            alignItems: 'center',
+            gap: '1rem',
+            flexWrap: 'wrap'
           }}>
-            <div>
-              <h1 style={{ 
-                margin: 0, 
-                color: '#1e293b', 
-                fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', 
-                fontWeight: '800',
-                letterSpacing: '-0.02em',
-                marginBottom: '0.5rem'
-              }}>
-                <span className="tossface" style={{ marginRight: '0.5rem' }}>📊</span>
-                Dashboard
-              </h1>
-              <p style={{ 
-                margin: 0, 
-                color: '#64748b', 
-                fontSize: '1.1rem',
-                fontWeight: '400'
-              }}>
-                Analyze your campaign performance and get AI-powered insights
-              </p>
+            {/* Search */}
+            <div style={{
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center'
+            }}>
+              <Search size={18} color="#64748b" style={{ position: 'absolute', left: '12px' }} />
+              <input
+                type="text"
+                placeholder="Search analyses..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.8)',
+                  backdropFilter: 'blur(10px)',
+                  fontSize: '0.9rem',
+                  width: '250px',
+                  outline: 'none'
+                }}
+              />
             </div>
+
+            {/* View Mode Toggle */}
+            <div style={{
+              display: 'flex',
+              background: 'rgba(255, 255, 255, 0.8)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '12px',
+              padding: '0.25rem'
+            }}>
+              <button
+                onClick={() => setViewMode('grid')}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  background: viewMode === 'grid' ? 'rgba(102, 126, 234, 0.1)' : 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  color: viewMode === 'grid' ? '#667eea' : '#64748b',
+                  fontSize: '0.85rem',
+                  fontWeight: '500'
+                }}
+              >
+                <Grid size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  background: viewMode === 'list' ? 'rgba(102, 126, 234, 0.1)' : 'transparent',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  color: viewMode === 'list' ? '#667eea' : '#64748b',
+                  fontSize: '0.85rem',
+                  fontWeight: '500'
+                }}
+              >
+                <List size={16} />
+              </button>
+            </div>
+
+            {/* New Analysis Button */}
             <button
               onClick={() => navigate('/analysis')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.75rem',
-                padding: '1rem 2rem',
-                background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
+                gap: '0.5rem',
+                padding: '0.75rem 1.5rem',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 color: 'white',
                 border: 'none',
-                borderRadius: '14px',
+                borderRadius: '12px',
                 cursor: 'pointer',
-                fontSize: '1rem',
+                fontSize: '0.9rem',
                 fontWeight: '600',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
                 transition: 'all 0.2s ease'
               }}
               onMouseEnter={(e) => {
                 e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.2)';
+                e.target.style.boxShadow = '0 8px 20px rgba(102, 126, 234, 0.4)';
               }}
               onMouseLeave={(e) => {
                 e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.15)';
+                e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
               }}
             >
-              <span className="tossface">✨</span>
+              <Plus size={16} />
               New Analysis
-              <Plus size={18} />
             </button>
           </div>
+        </div>
 
-          {/* Search and Controls */}
-          <div style={{
-            display: 'flex',
-            gap: '1rem',
-            alignItems: 'center',
-            flexWrap: 'wrap'
-          }}>
-            <div style={{
-              position: 'relative',
-              flex: '1',
-              minWidth: '300px'
-            }}>
-              <Search size={20} style={{
-                position: 'absolute',
-                left: '1rem',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#9ca3af'
-              }} />
-              <input
-                type="text"
-                placeholder="Search your analyses..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.875rem 1rem 0.875rem 3rem',
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '12px',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  backdropFilter: 'blur(20px)',
-                  transition: 'all 0.2s ease'
-                }}
-                onFocus={(e) => {
-                  e.target.style.background = 'rgba(255, 255, 255, 0.95)';
-                  e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.background = 'rgba(255, 255, 255, 0.7)';
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                }}
-              />
-            </div>
-
-            <div style={{
-              display: 'flex',
-              gap: '0.5rem',
-              background: 'rgba(255, 255, 255, 0.7)',
-              padding: '0.25rem',
-              borderRadius: '10px',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.3)'
-            }}>
-              <button
-                onClick={() => setViewMode('grid')}
-                style={{
-                  padding: '0.5rem',
-                  background: viewMode === 'grid' ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <Grid size={18} color={viewMode === 'grid' ? '#1e293b' : '#64748b'} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                style={{
-                  padding: '0.5rem',
-                  background: viewMode === 'list' ? 'rgba(0, 0, 0, 0.1)' : 'transparent',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <List size={18} color={viewMode === 'list' ? '#1e293b' : '#64748b'} />
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <div style={{ padding: '2rem' }}>
-          {error && (
-            <div style={{
-              color: '#ef4444',
-              marginBottom: '2rem',
-              padding: '1rem 1.5rem',
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              borderRadius: '12px',
-              backdropFilter: 'blur(20px)'
-            }}>
-              <span className="tossface" style={{ marginRight: '0.5rem' }}>❌</span>
-              {error}
-            </div>
-          )}
-
-          {filteredAnalyses.length === 0 ? (
+        {/* Content */}
+        <div>
+          {loading ? (
+            <FullPageLoader />
+          ) : error ? (
             <div style={{
               textAlign: 'center',
               padding: '4rem 2rem',
-              background: 'rgba(255, 255, 255, 0.7)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: '24px',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-              maxWidth: '600px',
-              margin: '0 auto'
+              color: '#64748b'
             }}>
-              <div style={{
-                background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                width: '80px',
-                height: '80px',
-                borderRadius: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 2rem',
-                position: 'relative'
-              }}>
-                <FileSpreadsheet size={36} style={{ color: 'white' }} />
-                <span className="tossface" style={{
-                  position: 'absolute',
-                  top: '-10px',
-                  right: '-10px',
-                  fontSize: '1.5rem',
-                  background: 'rgba(255, 255, 255, 0.9)',
-                  borderRadius: '12px',
-                  padding: '0.25rem 0.5rem',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-                }}>
-                  📊
-                </span>
-              </div>
-              
-              {analyses.length === 0 ? (
-                <>
-                  <h2 style={{ 
-                    marginBottom: '1rem', 
-                    color: '#1e293b',
-                    fontSize: '1.5rem',
-                    fontWeight: '700',
-                    letterSpacing: '-0.01em'
-                  }}>
-                    No analyses yet
-                  </h2>
-                  <p style={{ 
-                    color: '#64748b', 
-                    marginBottom: '2rem',
-                    fontSize: '1.1rem',
-                    lineHeight: '1.6',
-                    maxWidth: '400px',
-                    margin: '0 auto 2rem'
-                  }}>
-                    Upload your first marketing data file to get started with AI-powered insights and recommendations.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h2 style={{ 
-                    marginBottom: '1rem', 
-                    color: '#1e293b',
-                    fontSize: '1.5rem',
-                    fontWeight: '700',
-                    letterSpacing: '-0.01em'
-                  }}>
-                    No matching results
-                  </h2>
-                  <p style={{ 
-                    color: '#64748b', 
-                    marginBottom: '2rem',
-                    fontSize: '1.1rem',
-                    lineHeight: '1.6'
-                  }}>
-                    <span className="tossface" style={{ marginRight: '0.5rem' }}>🔍</span>
-                    Try adjusting your search terms to find what you're looking for.
-                  </p>
-                </>
-              )}
-              
+              <AlertTriangle size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: '600' }}>
+                Error Loading Analyses
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.95rem' }}>{error}</p>
+            </div>
+          ) : analyses.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '4rem 2rem',
+              color: '#64748b'
+            }}>
+              <FileSpreadsheet size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: '600' }}>
+                No Analyses Found
+              </h3>
+              <p style={{ margin: '0 0 2rem 0', fontSize: '0.95rem' }}>
+                Get started by uploading your first marketing data file
+              </p>
               <button
                 onClick={() => navigate('/analysis')}
                 style={{
-                  display: 'inline-flex',
+                  display: 'flex',
                   alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '1rem 2rem',
-                  background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
+                  gap: '0.5rem',
+                  padding: '0.75rem 1.5rem',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   border: 'none',
-                  borderRadius: '14px',
+                  borderRadius: '12px',
                   cursor: 'pointer',
-                  fontSize: '1rem',
+                  fontSize: '0.9rem',
                   fontWeight: '600',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.15)';
+                  margin: '0 auto'
                 }}
               >
-                <span className="tossface">🚀</span>
-                Upload Your First Dataset
+                <Plus size={16} />
+                Create Your First Analysis
               </button>
             </div>
           ) : (
@@ -492,6 +393,98 @@ const Dashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 10004,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onClick={() => setDeleteModal(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '12px',
+              padding: '2rem',
+              minWidth: '350px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem'
+              }}>
+                <Trash2 size={24} color="#8b5cf6" />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: '600', color: '#1e293b' }}>
+                Delete Analysis
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5' }}>
+                Are you sure you want to delete <strong>"{deleteModal.fileName}"</strong>?<br />
+                This action cannot be undone.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setDeleteModal(null)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'transparent',
+                  border: '1px solid rgba(0, 0, 0, 0.2)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  color: '#374151'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAnalysis}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#8b5cf6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem',
+                  color: 'white',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#7c3aed';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = '#8b5cf6';
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };
@@ -616,7 +609,7 @@ const AnalysisCard = ({
             </button>
             <button
               onClick={(e) => {
-                onDelete(analysis._id, e);
+                onDelete(analysis);
                 setShowMenu(false);
               }}
               style={{

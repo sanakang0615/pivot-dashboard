@@ -814,7 +814,7 @@ const AnalysisPage = () => {
               letterSpacing: '-0.01em'
             }}>
               <span className="tossface" style={{ marginRight: '0.5rem' }}>✨</span>
-              Analysis Complete: {analysis.fileName}
+              {analysis.fileName}
             </h2>
             <div style={{
               display: 'flex',

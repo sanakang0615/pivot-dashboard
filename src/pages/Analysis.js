@@ -601,7 +601,7 @@ const Analysis = () => {
                   letterSpacing: '-0.01em'
                 }}>
                   <span className="tossface" style={{ marginRight: '0.5rem' }}>✨</span>
-                  Analysis Complete: {analysisResult.fileName}
+                   {analysisResult.fileName}
                 </h2>
                 <p style={{
                   color: '#64748b',
