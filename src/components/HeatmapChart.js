@@ -24,10 +24,37 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
     }
   }));
 
+  // 데이터 안전성 검사 및 변환
+  const safeData = React.useMemo(() => {
+    if (!data) return [];
+    
+    // 배열이 아닌 경우 배열로 변환
+    if (!Array.isArray(data)) {
+      if (typeof data === 'object' && data !== null) {
+        return Object.values(data);
+      }
+      return [];
+    }
+    
+    // 배열의 각 항목이 객체인지 확인하고 안전하게 변환
+    return data.filter(item => item && typeof item === 'object').map(item => {
+      const safeItem = {};
+      Object.keys(item).forEach(key => {
+        const value = item[key];
+        if (value !== null && value !== undefined) {
+          safeItem[key] = value;
+        }
+      });
+      return safeItem;
+    });
+  }, [data]);
+
   useEffect(() => {
-    if (!data || data.length === 0) return;
+    if (!safeData || safeData.length === 0) return;
 
     const canvas = canvasRef.current;
+    if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     
     // 캔버스 크기 설정
@@ -39,7 +66,7 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
     ctx.fillRect(0, 0, width, height);
     
     // 데이터 준비
-    const campaigns = data.slice(0, 10); // 상위 10개만 표시
+    const campaigns = safeData.slice(0, 10); // 상위 10개만 표시
     const metrics = ['CTR', 'CVR', 'CPA'];
     
     if (campaigns.length === 0) return;
@@ -167,9 +194,9 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
     ctx.textAlign = 'center';
     ctx.fillText(title, width/2, 25);
     
-  }, [data, title]);
+  }, [safeData, title]);
 
-  if (!data || data.length === 0) {
+  if (!safeData || safeData.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
         <div className="text-center">

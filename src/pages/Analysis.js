@@ -35,7 +35,9 @@ const Analysis = () => {
     const handleKeyDown = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'l') {
         event.preventDefault();
-        setSidebarOpen(!sidebarOpen);
+        // 다른 사이드바가 열려있으면 토글 무시
+        // (이 페이지에서는 분석 사이드바만 있으므로 항상 토글 가능)
+        setSidebarOpen(prev => !prev);
       }
     };
 
@@ -43,7 +45,7 @@ const Analysis = () => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [sidebarOpen]);
+  }, [sidebarOpen]); // 상태를 의존성에 포함
 
   // Handle file upload with login check
   const handleFileUpload = async (file) => {
@@ -218,7 +220,8 @@ const Analysis = () => {
               borderRadius: '10px',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
-              backdropFilter: 'blur(10px)'
+              backdropFilter: 'blur(10px)',
+              title: 'Toggle Sidebar (⌘L)'
             }}
             onMouseEnter={(e) => {
               e.target.style.background = 'rgba(255, 255, 255, 0.95)';
@@ -931,169 +934,243 @@ const Analysis = () => {
 };
 
 // Pivot Table Card Component
-const PivotTableCard = ({ level, data, formatNumber }) => (
-  <div style={{
-    background: 'rgba(255, 255, 255, 0.8)',
-    backdropFilter: 'blur(20px)',
-    borderRadius: '20px',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-    overflow: 'hidden'
-  }}>
-    <div style={{ padding: '1.5rem 2rem 1rem' }}>
-      <h3 style={{
-        fontSize: '1.1rem',
-        fontWeight: '700',
-        color: '#1e293b',
-        margin: 0,
-        marginBottom: '0.25rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem'
+const PivotTableCard = ({ level, data, formatNumber }) => {
+  console.log(`🔍 PivotTableCard rendering for ${level}:`, { data, type: typeof data, isArray: Array.isArray(data) });
+  
+  // 데이터 검증
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    console.warn(`⚠️ Invalid data for PivotTableCard ${level}:`, data);
+    return (
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+        overflow: 'hidden',
+        padding: '1.5rem',
+        textAlign: 'center',
+        color: '#64748b'
       }}>
-        <span className="tossface">
-          {level === 'Campaign' ? '🎯' : level === 'Ad Set' ? '📦' : '📄'}
-        </span>
-        {level} Performance
-      </h3>
-      <p style={{
-        color: '#64748b',
-        margin: 0,
-        fontSize: '0.85rem'
+        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚠️</div>
+        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: '600' }}>
+          Invalid Data
+        </h3>
+        <p style={{ margin: 0, fontSize: '0.85rem' }}>
+          No valid data available for {level}
+        </p>
+      </div>
+    );
+  }
+
+  // 안전한 데이터 필터링
+  const safeData = data.filter(row => {
+    const isValid = row && typeof row === 'object' && !Array.isArray(row);
+    if (!isValid) {
+      console.warn(`⚠️ Invalid row in ${level}:`, row);
+    }
+    return isValid;
+  });
+
+  if (safeData.length === 0) {
+    console.warn(`⚠️ No valid rows found for ${level}`);
+    return (
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.8)',
+        backdropFilter: 'blur(20px)',
+        borderRadius: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+        overflow: 'hidden',
+        padding: '1.5rem',
+        textAlign: 'center',
+        color: '#64748b'
       }}>
-        {data.length} items analyzed
-      </p>
-    </div>
-    
-    <div style={{ padding: '0 1rem 1.5rem' }}>
-      <div style={{ 
-        overflowX: 'auto',
-        background: 'rgba(102, 126, 234, 0.05)',
-        borderRadius: '12px',
-        border: '1px solid rgba(102, 126, 234, 0.1)'
-      }}>
-        <table style={{ 
-          width: '100%', 
-          fontSize: '0.85rem',
-          borderCollapse: 'collapse'
+        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📊</div>
+        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: '600' }}>
+          No Valid Data
+        </h3>
+        <p style={{ margin: 0, fontSize: '0.85rem' }}>
+          No valid rows found for {level}
+        </p>
+      </div>
+    );
+  }
+
+  console.log(`✅ Rendering PivotTableCard for ${level} with ${safeData.length} valid rows`);
+
+  return (
+    <div style={{
+      background: 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(20px)',
+      borderRadius: '20px',
+      border: '1px solid rgba(255, 255, 255, 0.3)',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+      overflow: 'hidden'
+    }}>
+      <div style={{ padding: '1.5rem 2rem 1rem' }}>
+        <h3 style={{
+          fontSize: '1.1rem',
+          fontWeight: '700',
+          color: '#1e293b',
+          margin: 0,
+          marginBottom: '0.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
         }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid rgba(102, 126, 234, 0.15)' }}>
-              <th style={{
-                textAlign: 'left',
-                padding: '1rem 0.75rem',
-                fontWeight: '600',
-                color: '#475569',
-                fontSize: '0.8rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                {level}
-              </th>
-              <th style={{
-                textAlign: 'right',
-                padding: '1rem 0.75rem',
-                fontWeight: '600',
-                color: '#475569',
-                fontSize: '0.8rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                Impressions
-              </th>
-              <th style={{
-                textAlign: 'right',
-                padding: '1rem 0.75rem',
-                fontWeight: '600',
-                color: '#475569',
-                fontSize: '0.8rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                CTR
-              </th>
-              <th style={{
-                textAlign: 'right',
-                padding: '1rem 0.75rem',
-                fontWeight: '600',
-                color: '#475569',
-                fontSize: '0.8rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em'
-              }}>
-                Conversions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.slice(0, 6).map((row, idx) => (
-              <tr key={idx} style={{
-                borderBottom: '1px solid rgba(102, 126, 234, 0.08)',
-                transition: 'background 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(102, 126, 234, 0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-              }}>
-                <td style={{
-                  padding: '0.75rem',
-                  maxWidth: '120px'
-                }}>
-                  <div style={{
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontWeight: '500',
-                    color: '#374151'
-                  }} title={row[level]}>
-                    {row[level]}
-                  </div>
-                </td>
-                <td style={{
-                  textAlign: 'right',
-                  padding: '0.75rem',
-                  color: '#1e293b',
-                  fontWeight: '600'
-                }}>
-                  {formatNumber(row.Impression)}
-                </td>
-                <td style={{
-                  textAlign: 'right',
-                  padding: '0.75rem',
-                  color: '#1e293b',
-                  fontWeight: '600'
-                }}>
-                  {row.CTR}
-                </td>
-                <td style={{
-                  textAlign: 'right',
-                  padding: '0.75rem',
-                  color: '#1e293b',
-                  fontWeight: '600'
-                }}>
-                  {formatNumber(row.Purchase)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {data.length > 6 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '1rem',
-            color: '#64748b',
+          <span className="tossface">
+            {level === 'Campaign' ? '🎯' : level === 'Ad Set' ? '📦' : '📄'}
+          </span>
+          {level} Performance
+        </h3>
+        <p style={{
+          color: '#64748b',
+          margin: 0,
+          fontSize: '0.85rem'
+        }}>
+          {safeData.length} items analyzed
+        </p>
+      </div>
+      
+      <div style={{ padding: '0 1rem 1.5rem' }}>
+        <div style={{ 
+          overflowX: 'auto',
+          background: 'rgba(102, 126, 234, 0.05)',
+          borderRadius: '12px',
+          border: '1px solid rgba(102, 126, 234, 0.1)'
+        }}>
+          <table style={{ 
+            width: '100%', 
             fontSize: '0.85rem',
-            fontStyle: 'italic'
+            borderCollapse: 'collapse'
           }}>
-            <span className="tossface" style={{ marginRight: '0.5rem' }}>➕</span>
-            {data.length - 6} more items available in full report
-          </div>
-        )}
+            <thead>
+              <tr style={{ borderBottom: '1px solid rgba(102, 126, 234, 0.15)' }}>
+                <th style={{
+                  textAlign: 'left',
+                  padding: '1rem 0.75rem',
+                  fontWeight: '600',
+                  color: '#475569',
+                  fontSize: '0.8rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  {level}
+                </th>
+                <th style={{
+                  textAlign: 'right',
+                  padding: '1rem 0.75rem',
+                  fontWeight: '600',
+                  color: '#475569',
+                  fontSize: '0.8rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  Impressions
+                </th>
+                <th style={{
+                  textAlign: 'right',
+                  padding: '1rem 0.75rem',
+                  fontWeight: '600',
+                  color: '#475569',
+                  fontSize: '0.8rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  CTR
+                </th>
+                <th style={{
+                  textAlign: 'right',
+                  padding: '1rem 0.75rem',
+                  fontWeight: '600',
+                  color: '#475569',
+                  fontSize: '0.8rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  Conversions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {safeData.slice(0, 6).map((row, idx) => {
+                // 안전한 값 추출
+                const levelValue = row[level] || 'Unknown';
+                const impressionValue = row.Impression || row.impression || 0;
+                const ctrValue = row.CTR || row.ctr || '0%';
+                const purchaseValue = row.Purchase || row.purchase || 0;
+
+                return (
+                  <tr key={idx} style={{
+                    borderBottom: '1px solid rgba(102, 126, 234, 0.08)',
+                    transition: 'background 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(102, 126, 234, 0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}>
+                    <td style={{
+                      padding: '0.75rem',
+                      maxWidth: '120px'
+                    }}>
+                      <div style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontWeight: '500',
+                        color: '#374151'
+                      }} title={String(levelValue)}>
+                        {String(levelValue)}
+                      </div>
+                    </td>
+                    <td style={{
+                      textAlign: 'right',
+                      padding: '0.75rem',
+                      color: '#1e293b',
+                      fontWeight: '600'
+                    }}>
+                      {formatNumber(impressionValue)}
+                    </td>
+                    <td style={{
+                      textAlign: 'right',
+                      padding: '0.75rem',
+                      color: '#1e293b',
+                      fontWeight: '600'
+                    }}>
+                      {String(ctrValue)}
+                    </td>
+                    <td style={{
+                      textAlign: 'right',
+                      padding: '0.75rem',
+                      color: '#1e293b',
+                      fontWeight: '600'
+                    }}>
+                      {formatNumber(purchaseValue)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {safeData.length > 6 && (
+            <div style={{
+              textAlign: 'center',
+              padding: '1rem',
+              color: '#64748b',
+              fontSize: '0.85rem',
+              fontStyle: 'italic'
+            }}>
+              <span className="tossface" style={{ marginRight: '0.5rem' }}>➕</span>
+              {safeData.length - 6} more items available in full report
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default Analysis;

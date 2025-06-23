@@ -1297,15 +1297,31 @@ app.get('/api/analysis/:id', async (req, res) => {
       hasCampaign: analysis.pivotData && analysis.pivotData.Campaign ? analysis.pivotData.Campaign.length : 0
     });
 
+    // Safely convert pivotData to ensure it's always an object with arrays
+    const safePivotTables = {};
+    if (analysis.pivotData && typeof analysis.pivotData === 'object') {
+      Object.keys(analysis.pivotData).forEach(key => {
+        const value = analysis.pivotData[key];
+        if (Array.isArray(value)) {
+          safePivotTables[key] = value;
+        } else if (value && typeof value === 'object') {
+          // If it's an object, try to convert it to array format
+          safePivotTables[key] = Object.values(value);
+        } else {
+          safePivotTables[key] = [];
+        }
+      });
+    }
+
     res.json({
       success: true,
       analysis: {
         _id: analysis._id,
         fileName: analysis.fileName,
         fileSize: analysis.fileSize,
-        rawData: analysis.rawData || [],
-        pivotTables: analysis.pivotData || {},
-        classifiedData: analysis.classifiedData || [],
+        rawData: Array.isArray(analysis.rawData) ? analysis.rawData : [],
+        pivotTables: safePivotTables,
+        classifiedData: Array.isArray(analysis.classifiedData) ? analysis.classifiedData : [],
         insights: analysis.insights || '',
         heatmapImage: analysis.heatmapImage || '',
         status: analysis.status,
