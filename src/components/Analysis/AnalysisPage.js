@@ -118,6 +118,13 @@ const AnalysisPage = () => {
         
         let fetchedAnalysis = data.analysis;
 
+        // Log createdAt field for debugging
+        console.log('📅 createdAt field:', {
+          value: fetchedAnalysis.createdAt,
+          type: typeof fetchedAnalysis.createdAt,
+          isValid: fetchedAnalysis.createdAt && !isNaN(new Date(fetchedAnalysis.createdAt).getTime())
+        });
+
         // [Defensive Code] - Enhanced data type safety
         // Ensure pivotTables is always a valid object with arrays
         if (fetchedAnalysis.pivotTables && typeof fetchedAnalysis.pivotTables === 'object') {
@@ -848,11 +855,33 @@ const AnalysisPage = () => {
                   fontSize: '0.95rem'
                 }}>
                   <span className="tossface">📅</span>
-                  {new Date(analysis.createdAt).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
+                  {(() => {
+                    try {
+                      // createdAt이 있고 유효한 날짜인지 확인
+                      if (analysis.createdAt && !isNaN(new Date(analysis.createdAt).getTime())) {
+                        return new Date(analysis.createdAt).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        });
+                      } else {
+                        // createdAt이 없거나 유효하지 않으면 현재 시간 사용
+                        console.warn('⚠️ Invalid or missing createdAt, using current time:', analysis.createdAt);
+                        return new Date().toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        });
+                      }
+                    } catch (error) {
+                      console.error('❌ Error formatting date:', error);
+                      return new Date().toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      });
+                    }
+                  })()}
                 </div>
               </div>
               

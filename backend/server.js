@@ -835,10 +835,13 @@ ${JSON.stringify(pivotTables.Ad, null, 2)}
       try {
         console.log('Creating analysis document...');
         console.log('📊 pivotTables structure:', JSON.stringify(pivotTables, null, 2));
+        console.log('📅 Setting createdAt to:', new Date());
         analysisDoc = new Analysis({
           userId,
           fileName: fileData.metadata.fileName,
           fileSize: fileData.metadata.fileSize,
+          createdAt: new Date(),
+          updatedAt: new Date(),
           rawData: fileData.data,
           pivotData: pivotTables || {},
           insights,
@@ -854,6 +857,7 @@ ${JSON.stringify(pivotTables.Ad, null, 2)}
         console.log('Saving analysis to database...');
         await analysisDoc.save();
         console.log('✅ Analysis saved to database with ID:', analysisDoc._id);
+        console.log('📅 Final createdAt value:', analysisDoc.createdAt);
       } catch (error) {
         console.error('❌ Database save failed:', error);
         // 데이터베이스 저장 실패 시에도 응답은 반환하되, 경고 추가
@@ -1036,10 +1040,13 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
     if (Analysis && mongoose.connection.readyState === 1) {
       try {
         console.log('Saving to database...');
+        console.log('📅 Setting createdAt to:', new Date());
         analysisDoc = new Analysis({
           userId,
           fileName: originalname,
           fileSize: size,
+          createdAt: new Date(),
+          updatedAt: new Date(),
           rawData,
           pivotData: pivotData || {},
           classifiedData,
@@ -1054,9 +1061,16 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
 
         await analysisDoc.save();
         console.log('Successfully saved to database with ID:', analysisDoc._id);
+        console.log('📅 Final createdAt value:', analysisDoc.createdAt);
       } catch (error) {
-        console.warn('Database save failed, continuing without save:', error.message);
+        console.error('❌ Database save failed:', error);
+        // 데이터베이스 저장 실패 시에도 응답은 반환하되, 경고 추가
+        console.warn('Analysis will be returned without database persistence');
       }
+    } else {
+      console.warn('⚠️ Database not available. Analysis will not be persisted.');
+      console.log('MongoDB connection state:', mongoose.connection.readyState);
+      console.log('Analysis model available:', !!Analysis);
     }
 
     // 5. Return results

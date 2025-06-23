@@ -84,21 +84,26 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
   };
 
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: '100%',
-      left: 0,
-      right: 0,
-      marginBottom: '0.5rem',
-      background: 'rgba(255, 255, 255, 0.95)',
-      backdropFilter: 'blur(20px)',
-      border: '1px solid rgba(255, 255, 255, 0.3)',
-      borderRadius: '12px',
-      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-      maxHeight: '300px',
-      overflowY: 'auto',
-      zIndex: 20
-    }}>
+    <div 
+      data-context-selector
+      style={{
+        position: 'absolute',
+        bottom: '100%',
+        left: 0,
+        right: 0,
+        marginLeft: '0.5rem',
+        marginRight: '0.5rem',
+        marginBottom: '0.5rem',
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.3)',
+        borderRadius: '12px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+        maxHeight: '300px',
+        maxWidth: '450px',
+        overflowY: 'auto',
+        zIndex: 20
+      }}>
       {/* Header */}
       <div style={{
         padding: '1rem 1rem 0.5rem',
@@ -106,7 +111,7 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
       }}>
         <h4 style={{
           fontSize: '0.9rem',
-          fontWeight: '600',
+          fontWeight: '800',
           color: '#1e293b',
           margin: 0,
           marginBottom: '0.25rem'
@@ -129,7 +134,7 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
             padding: '1rem',
             textAlign: 'center',
             color: '#64748b',
-            fontSize: '0.9rem'
+            fontSize: '0.8rem'
           }}>
             <FileText size={24} color="#d1d5db" style={{ marginBottom: '0.5rem' }} />
             <p style={{ margin: 0 }}>No data available to add as context</p>
@@ -141,7 +146,7 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
               onClick={() => onSelect(option)}
               style={{
                 width: '100%',
-                padding: '0.75rem',
+                padding: '0.5rem',
                 background: isSelected(option.id) 
                   ? getTypeBg(option.type)
                   : 'transparent',
@@ -153,9 +158,9 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
                 transition: 'all 0.2s ease',
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '0.75rem',
+                gap: '0.7rem',
                 textAlign: 'left',
-                marginBottom: '0.25rem'
+                marginBottom: '0.1rem'
               }}
               onMouseEnter={(e) => {
                 if (!isSelected(option.id)) {
@@ -186,10 +191,10 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
               
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: '0.9rem',
+                  fontSize: '0.8rem',
                   fontWeight: '600',
                   color: '#1e293b',
-                  marginBottom: '0.25rem',
+                  marginBottom: '0.2rem',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem'
@@ -205,7 +210,7 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
                   )}
                 </div>
                 <div style={{
-                  fontSize: '0.8rem',
+                  fontSize: '0.6rem',
                   color: '#64748b',
                   lineHeight: '1.3'
                 }}>
@@ -224,13 +229,15 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
           borderTop: '1px solid rgba(255, 255, 255, 0.3)',
           background: 'rgba(102, 126, 234, 0.05)'
         }}>
-          <p style={{
+          <p
+          className="Pretendard"
+          style={{
             fontSize: '0.8rem',
             color: '#475569',
             margin: 0,
             lineHeight: '1.4'
           }}>
-            💡 Selected contexts will be included in your question to help the AI provide more accurate and specific answers.
+            <span className="tossface">💡</span> Selected contexts will be included in your question to help the AI provide more accurate and specific answers.
           </p>
         </div>
       )}

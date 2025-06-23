@@ -46,6 +46,30 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
     }
   }, [inputValue]);
 
+  // Handle clicking outside context selector
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showContextSelector) {
+        // Check if click is outside the context selector and @ button
+        const contextSelector = document.querySelector('[data-context-selector]');
+        const atButton = document.querySelector('[data-at-button]');
+        
+        if (contextSelector && !contextSelector.contains(event.target) && 
+            atButton && !atButton.contains(event.target)) {
+          setShowContextSelector(false);
+        }
+      }
+    };
+
+    if (showContextSelector) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showContextSelector]);
+
   const loadChatHistory = async () => {
     try {
       const analysisId = analysisData?._id || analysisData?.analysisId;
@@ -392,7 +416,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
             <div style={{
               width: '32px',
               height: '32px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
@@ -592,7 +616,8 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
                     border: '1px solid rgba(167, 139, 250, 0.3)',
                     borderRadius: '8px',
                     fontSize: '0.8rem',
-                    color: '#5b21b6'
+                    color: '#5b21b6',
+                    fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                   }}
                 >
                   <span>{context.name}</span>
@@ -622,6 +647,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
           }}>
             <button
               onClick={() => setShowContextSelector(!showContextSelector)}
+              data-at-button
               style={{
                 width: '44px',
                 height: '44px',
@@ -633,6 +659,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
+                paddingBottom: '1.8rem'
               }}
               onMouseEnter={(e) => {
                 e.target.style.background = 'rgba(255, 255, 255, 0.95)';
@@ -666,7 +693,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
                   resize: 'none',
                   fontSize: '0.9rem',
                   lineHeight: '1.4',
-                  fontFamily: 'inherit',
+                  fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                   outline: 'none',
                   transition: 'all 0.2s ease'
                 }}
@@ -701,9 +728,9 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
               }}
             >
               {isLoading ? (
-                <Loader2 size={16} color="#667eea" className="animate-spin" />
+                <Loader2 size={16} color="#667eea" className="animate-spin" style={{ marginBottom: '1.7rem' }} />
               ) : (
-                <Send size={16} color={inputValue.trim() ? 'white' : '#64748b'} />
+                <Send size={16} color={inputValue.trim() ? 'white' : '#64748b'} style={{ marginBottom: '1.7rem' }} />
               )}
             </button>
           </div>
@@ -763,10 +790,10 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
               }}>
                 <Trash2 size={24} color="#8b5cf6" />
               </div>
-              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: '600', color: '#1e293b' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: '600', color: '#1e293b', fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                 Delete Chat
               </h3>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5', fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                 Are you sure you want to delete this chat?<br />
                 This action cannot be undone.
               </p>
@@ -783,7 +810,8 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
                   cursor: isDeleting ? 'not-allowed' : 'pointer',
                   fontSize: '0.9rem',
                   color: '#374151',
-                  opacity: isDeleting ? 0.5 : 1
+                  opacity: isDeleting ? 0.5 : 1,
+                  fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                 }}
               >
                 Cancel
@@ -800,7 +828,8 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
                   fontSize: '0.9rem',
                   color: 'white',
                   opacity: isDeleting ? 0.5 : 1,
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
                 }}
                 onMouseEnter={(e) => {
                   if (!isDeleting) {
