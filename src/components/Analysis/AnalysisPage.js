@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, UserButton } from '@clerk/clerk-react';
-import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3, Loader2, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Menu, X, FileText, ArrowRight, Download, Share2, BarChart3, Loader2, MessageCircle, Edit } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { usePDF } from 'react-to-pdf';
 import HeatmapChart from '../HeatmapChart';
@@ -20,6 +20,9 @@ const AnalysisPage = () => {
   const [chatSidebarOpen, setChatSidebarOpen] = useState(false);
   const [analysisList, setAnalysisList] = useState([]);
   const [exporting, setExporting] = useState(false);
+  const [renameModal, setRenameModal] = useState(false);
+  const [newFileName, setNewFileName] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
   const heatmapRef = useRef(null);
   const contentRef = useRef(null);
   
@@ -37,6 +40,47 @@ const AnalysisPage = () => {
 
   const handleChatSidebarClose = () => {
     setChatSidebarOpen(false);
+  };
+
+  // Handle rename
+  const handleRename = () => {
+    setRenameModal(true);
+    setNewFileName(analysis.fileName);
+  };
+
+  const handleRenameSubmit = async () => {
+    if (!newFileName.trim()) return;
+    
+    setIsRenaming(true);
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${analysisId}`, {
+        method: 'PATCH',
+        headers: { 
+          'x-user-id': userId,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ fileName: newFileName.trim() })
+      });
+      
+      if (res.ok) {
+        // Update local state
+        setAnalysis(prev => ({
+          ...prev,
+          fileName: newFileName.trim()
+        }));
+        setRenameModal(false);
+        setNewFileName('');
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Rename failed:', res.status, errorData);
+        alert(`Failed to rename analysis: ${res.status} - ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Failed to rename analysis:', error);
+      alert(`Failed to rename analysis: ${error.message}`);
+    } finally {
+      setIsRenaming(false);
+    }
   };
 
   // Keyboard shortcut for opening chat
@@ -234,21 +278,31 @@ const AnalysisPage = () => {
     return num ? num.toLocaleString() : '0';
   };
 
-  // 히트맵 이미지를 저장하는 함수
-  const saveHeatmapImage = async () => {
-    // Ensure we have all necessary data to save, including a heatmap if possible
-    if (!analysis || !analysis.fileName || !userId) return;
-
-    let heatmapImage = null;
-    if (heatmapRef.current) {
-      heatmapImage = heatmapRef.current.getImageAsBase64();
-      if (!heatmapImage) {
-        console.warn('Could not generate heatmap image for saving.');
+  // 히트맵 이미지를 생성하여 analysisData에 추가하는 함수
+  const generateHeatmapImage = async () => {
+    if (heatmapRef.current && analysis?.pivotTables?.Campaign) {
+      try {
+        const heatmapImage = heatmapRef.current.getImageAsBase64();
+        if (heatmapImage) {
+          console.log('🔥 Generated heatmap image:', heatmapImage.length, 'characters');
+          setAnalysis(prev => ({
+            ...prev,
+            heatmapImage: heatmapImage
+          }));
+          return heatmapImage;
+        }
+      } catch (error) {
+        console.error('❌ Error generating heatmap image:', error);
       }
     }
-    
-    // Use analysisId from the analysis object itself, which could be new
-    const idToSave = analysis.analysisId || analysis._id;
+    return null;
+  };
+
+  // 히트맵 이미지를 저장하는 함수
+  const saveHeatmapImage = async (heatmapImage) => {
+    if (!analysis || !analysis.fileName || !userId) return;
+
+    let idToSave = analysis.analysisId || analysis._id;
     if (!idToSave) {
       console.error('Cannot save analysis without an ID.');
       return;
@@ -289,15 +343,10 @@ const AnalysisPage = () => {
     
     setExporting(true);
     try {
-      // 히트맵 이미지가 있다면 먼저 생성
+      // 히트맵 이미지가 없다면 먼저 생성
       if (heatmapRef.current && !analysis.heatmapImage) {
-        const heatmapImage = heatmapRef.current.getImageAsBase64();
+        const heatmapImage = await generateHeatmapImage();
         if (heatmapImage) {
-          // 히트맵 이미지를 analysis 객체에 임시로 추가
-          setAnalysis(prev => ({
-            ...prev,
-            heatmapImage
-          }));
           // 이미지 렌더링을 위한 짧은 대기
           await new Promise(resolve => setTimeout(resolve, 500));
         }
@@ -319,13 +368,33 @@ const AnalysisPage = () => {
     if (analysis && analysis.pivotTables) {
       // For new analyses, a heatmap might not be rendered yet.
       // We save once with heatmap, or just save the data if no heatmap.
-      const timer = setTimeout(() => {
-        saveHeatmapImage();
+      const timer = setTimeout(async () => {
+        // 히트맵 이미지 생성
+        const heatmapImage = await generateHeatmapImage();
+        saveHeatmapImage(heatmapImage);
       }, 1000); // Delay to allow heatmap to render
       
       return () => clearTimeout(timer);
     }
   }, [analysis, userId]);
+
+  // 히트맵이 렌더링된 후 자동으로 이미지 생성
+  useEffect(() => {
+    if (analysis?.pivotTables?.Campaign && !analysis.heatmapImage) {
+      const generateImage = async () => {
+        // 히트맵이 완전히 렌더링될 때까지 대기 (더 짧게 조정)
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const heatmapImage = await generateHeatmapImage();
+        if (heatmapImage) {
+          console.log('🔥 Auto-generated heatmap image and saved to analysis');
+          saveHeatmapImage(heatmapImage);
+        }
+      };
+      
+      generateImage();
+    }
+  }, [analysis?.pivotTables?.Campaign, analysis?.heatmapImage]);
 
   // 분석 데이터가 변경될 때마다 로깅
   useEffect(() => {
@@ -567,6 +636,15 @@ const AnalysisPage = () => {
       fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       position: 'relative'
     }}>
+      <style>
+        {`
+          @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+          }
+        `}
+      </style>
+      
       <Sidebar 
         isOpen={sidebarOpen && !chatSidebarOpen} 
         onClose={() => setSidebarOpen(false)} 
@@ -824,17 +902,54 @@ const AnalysisPage = () => {
               pageBreakAfter: 'always'
             }
           }}>
-            <h2 style={{
-              fontSize: 'clamp(1.5rem, 3vw, 2rem)',
-              fontWeight: '700',
-              color: '#1e293b',
-              margin: 0,
-              marginBottom: '1rem',
-              letterSpacing: '-0.01em'
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              marginBottom: '1rem'
             }}>
-              <span className="tossface" style={{ marginRight: '0.5rem' }}>✨</span>
-              {analysis.fileName}
-            </h2>
+              <h2 style={{
+                fontSize: 'clamp(1.5rem, 3vw, 2rem)',
+                fontWeight: '700',
+                color: '#1e293b',
+                margin: 0,
+                letterSpacing: '-0.01em',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flex: 1
+              }}>
+                <span className="tossface">✨</span>
+                {analysis.fileName}
+              </h2>
+              <button
+                onClick={handleRename}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#94a3b8',
+                  transition: 'all 0.2s ease',
+                  borderRadius: '6px'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.color = '#64748b';
+                  e.target.style.background = 'rgba(100, 116, 139, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.color = '#94a3b8';
+                  e.target.style.background = 'transparent';
+                }}
+                title="Rename analysis"
+              >
+                <Edit size={16} />
+              </button>
+            </div>
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -896,36 +1011,6 @@ const AnalysisPage = () => {
                   })()}
                 </div>
               </div>
-              
-              {/* <button
-                onClick={() => navigate('/dashboard')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '0.5rem 1.25rem',
-                  background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: '600',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.transform = 'translateY(-2px)';
-                  e.target.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-                }}
-              >
-                <span className="tossface">🔙</span>
-                Go to Dashboard
-              </button> */}
             </div>
           </div>
 
@@ -1135,13 +1220,41 @@ const AnalysisPage = () => {
                       </div>
                     </div>
                   ) : (
-                    // 저장된 이미지가 없으면 새로 생성
+                    // 이미지가 없으면 로딩 상태 표시
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        margin: '0 auto 1rem',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        borderRadius: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        animation: 'pulse 2s infinite'
+                      }}>
+                        <span className="tossface" style={{ fontSize: '1.8rem' }}>🔥</span>
+                      </div>
+                      <p style={{ color: '#64748b', fontSize: '0.95rem', margin: 0 }}>
+                        Generating heatmap visualization...
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* 숨겨진 HeatmapChart 컴포넌트 - 이미지 생성용 */}
+                  <div style={{ 
+                    position: 'absolute', 
+                    left: '-9999px', 
+                    top: '-9999px',
+                    visibility: 'hidden',
+                    pointerEvents: 'none'
+                  }}>
                     <HeatmapChart 
                       ref={heatmapRef}
                       data={campaignData}
                       title="Campaign Performance Heatmap"
                     />
-                  )}
+                  </div>
                 </div>
               </div>
             );
@@ -1272,6 +1385,129 @@ const AnalysisPage = () => {
           )}
         </div>
       </main>
+      
+      {/* Rename Modal */}
+      {renameModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 10004,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          onClick={() => setRenameModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              borderRadius: '12px',
+              padding: '2rem',
+              minWidth: '350px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{
+                width: '48px',
+                height: '48px',
+                background: 'rgba(139, 92, 246, 0.1)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem'
+              }}>
+                <Edit size={24} color="#8b5cf6" />
+              </div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: '600', color: '#1e293b' }}>
+                Rename Analysis
+              </h3>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: '1.5' }}>
+                Enter a new name for your analysis
+              </p>
+            </div>
+            <input
+              type="text"
+              value={newFileName}
+              onChange={(e) => setNewFileName(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleRenameSubmit()}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid rgba(0, 0, 0, 0.2)',
+                borderRadius: '8px',
+                fontSize: '0.9rem',
+                marginBottom: '1.5rem',
+                outline: 'none',
+                transition: 'all 0.2s ease'
+              }}
+              onFocus={(e) => {
+                e.target.style.border = '1px solid rgba(139, 92, 246, 0.5)';
+                e.target.style.boxShadow = '0 0 0 3px rgba(139, 92, 246, 0.15)';
+              }}
+              onBlur={(e) => {
+                e.target.style.border = '1px solid rgba(0, 0, 0, 0.2)';
+                e.target.style.boxShadow = 'none';
+              }}
+              placeholder="Enter new name..."
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setRenameModal(false)}
+                disabled={isRenaming}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: 'transparent',
+                  border: '1px solid rgba(0, 0, 0, 0.2)',
+                  borderRadius: '8px',
+                  cursor: isRenaming ? 'not-allowed' : 'pointer',
+                  fontSize: '0.9rem',
+                  color: '#374151',
+                  opacity: isRenaming ? 0.5 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRenameSubmit}
+                disabled={!newFileName.trim() || isRenaming}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: '#8b5cf6',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: newFileName.trim() && !isRenaming ? 'pointer' : 'not-allowed',
+                  fontSize: '0.9rem',
+                  color: 'white',
+                  opacity: newFileName.trim() && !isRenaming ? 1 : 0.5,
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (newFileName.trim() && !isRenaming) {
+                    e.target.style.background = '#7c3aed';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = '#8b5cf6';
+                }}
+              >
+                {isRenaming ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {exporting && <ExportProgressModal />}
     </div>

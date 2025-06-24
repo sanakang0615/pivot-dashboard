@@ -578,7 +578,8 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                paddingBottom: '1.8rem'
+                marginBottom: '1.3rem'
+            
               }}
               onMouseEnter={(e) => {
                 e.target.style.background = 'rgba(255, 255, 255, 0.95)';
@@ -643,13 +644,14 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
                 justifyContent: 'center',
                 cursor: inputValue.trim() && !isLoading ? 'pointer' : 'not-allowed',
                 transition: 'all 0.2s ease',
-                opacity: inputValue.trim() && !isLoading ? 1 : 0.5
+                opacity: inputValue.trim() && !isLoading ? 1 : 0.5,
+                marginBottom: '1.3rem'
               }}
             >
               {isLoading ? (
-                <Loader2 size={16} color="#667eea" className="animate-spin" style={{ marginBottom: '1.7rem' }} />
+                <Loader2 size={16} color="#667eea" className="animate-spin"  />
               ) : (
-                <Send size={16} color={inputValue.trim() ? 'white' : '#64748b'} style={{ marginBottom: '1.7rem' }} />
+                <Send size={16} color={inputValue.trim() ? 'white' : '#64748b'}  />
               )}
             </button>
           </div>
