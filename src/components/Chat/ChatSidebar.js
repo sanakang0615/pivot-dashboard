@@ -95,7 +95,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
               });
             }
           });
-          console.log('📚 Contexts from current chat stream:', chatStreamContexts.map(c => c.name));
+          //console.log('📚 Contexts from current chat stream:', chatStreamContexts.map(c => c.name));
         }
       }
     } catch (error) {
@@ -124,6 +124,10 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const handleSendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
 
+    console.log('🚀 === CHAT SEND START ===');
+    console.log('📝 Input value:', inputValue.trim());
+    console.log('⏳ Loading state:', isLoading);
+
     const userMessage = {
       id: Date.now(),
       type: 'user',
@@ -132,6 +136,13 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       timestamp: new Date().toISOString()
     };
 
+    console.log('👤 User message created:', {
+      id: userMessage.id,
+      content: userMessage.content,
+      contextCount: userMessage.contexts.length,
+      contexts: userMessage.contexts.map(c => ({ id: c.id, name: c.name, type: c.type }))
+    });
+
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
     setInputValue('');
@@ -139,6 +150,8 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
     setIsLoading(true);
 
     try {
+      console.log('🔄 === BUILDING REQUEST CONTEXT ===');
+      
       // Get all contexts used in the current chat stream
       const chatStreamContexts = [];
       messages.forEach(message => {
@@ -151,11 +164,34 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
         }
       });
 
+      console.log('📚 Chat stream contexts found:', chatStreamContexts.length);
+      chatStreamContexts.forEach((context, index) => {
+        console.log(`  ${index + 1}. ${context.name} (${context.type}) - ID: ${context.id}`);
+      });
+
       // Combine current selection with chat stream contexts
       const allContexts = [...selectedContexts];
       chatStreamContexts.forEach(context => {
         if (!allContexts.some(c => c.id === context.id)) {
           allContexts.push(context);
+        }
+      });
+
+      console.log('🔗 Final combined contexts:', allContexts.length);
+      allContexts.forEach((context, index) => {
+        console.log(`  ${index + 1}. ${context.name} (${context.type}) - ID: ${context.id}`);
+        if (context.data) {
+          console.log(`     Data type: ${typeof context.data}, Is array: ${Array.isArray(context.data)}`);
+          if (Array.isArray(context.data)) {
+            console.log(`     Array length: ${context.data.length}`);
+            if (context.data.length > 0) {
+              console.log(`     First item type: ${typeof context.data[0]}`);
+              if (typeof context.data[0] === 'string') {
+                console.log(`     First item length: ${context.data[0].length}`);
+                console.log(`     First item preview: ${context.data[0].substring(0, 50)}...`);
+              }
+            }
+          }
         }
       });
 
@@ -167,11 +203,10 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
         chatHistory: messages.slice(-10) // Last 10 messages for context
       };
 
-      // Log the complete prompt being sent to Gemini API
-      console.log('🚀 Sending to Gemini API:');
-      console.log('📝 User Message:', requestBody.message);
-      console.log('🔗 Current Selected Contexts:', userMessage.contexts.map(c => c.name));
-      console.log('📚 All Contexts in Conversation:', requestBody.contexts.map(c => c.name));
+      console.log('📦 === REQUEST BODY PREPARATION ===');
+      console.log('📝 Message:', requestBody.message);
+      console.log('📊 Analysis data keys:', Object.keys(requestBody.analysisData || {}));
+      console.log('💬 Chat history length:', requestBody.chatHistory.length);
       
       // 히트맵 이미지가 포함된 컨텍스트가 있는지 확인하고 로그
       const heatmapContexts = requestBody.contexts.filter(c => c.id === 'performance_heatmap');
@@ -182,7 +217,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
             name: context.name,
             hasImageData: Array.isArray(context.data) && context.data.length > 0,
             imageDataLength: Array.isArray(context.data) ? context.data[0]?.length || 0 : 0,
-            imageDataStartsWith: Array.isArray(context.data) && context.data[0] ? 
+            imageDataStartsWith: Array.isArray(context.data) && context.data[0] && typeof context.data[0] === 'string' ? 
               context.data[0].substring(0, 50) + '...' : 'No image data'
           });
         });
@@ -199,7 +234,9 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
 
       // Check if request body can be serialized
       try {
-        JSON.stringify(requestBody);
+        const serialized = JSON.stringify(requestBody);
+        console.log('✅ Request body serialization successful');
+        console.log('📏 Serialized size:', serialized.length, 'characters');
       } catch (serializeError) {
         console.error('❌ Request body serialization error:', serializeError);
         throw new Error('Request body contains invalid data that cannot be serialized');
@@ -207,8 +244,10 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
 
       // Send to Gemini API
       const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/chat/send`;
-      console.log('🌐 Sending request to:', apiUrl);
+      console.log('🌐 === SENDING REQUEST ===');
+      console.log('🌐 API URL:', apiUrl);
       console.log('🔧 REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+      console.log('👤 User ID:', userId);
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -219,11 +258,18 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
         body: JSON.stringify(requestBody)
       });
 
+      console.log('📡 === RESPONSE RECEIVED ===');
       console.log('📡 Response status:', response.status, response.statusText);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (response.ok) {
         const result = await response.json();
-        console.log('✅ API Response:', result);
+        console.log('✅ API Response received successfully');
+        console.log('✅ Response structure:', {
+          success: result.success,
+          hasResponse: !!result.response,
+          responseLength: result.response ? result.response.length : 0
+        });
         
         if (result.success) {
           const aiMessage = {
@@ -233,34 +279,46 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
             timestamp: new Date().toISOString()
           };
 
+          console.log('🤖 AI message created:', {
+            id: aiMessage.id,
+            contentLength: aiMessage.content.length,
+            contentPreview: aiMessage.content.substring(0, 100) + '...'
+          });
+
           const finalMessages = [...newMessages, aiMessage];
           setMessages(finalMessages);
           saveChatHistory(finalMessages);
+          console.log('✅ Chat completed successfully');
         } else {
+          console.error('❌ API returned success: false');
+          console.error('❌ Error details:', result.error);
           throw new Error(result.error || 'API returned success: false');
         }
       } else {
         // Log detailed error information
         const errorText = await response.text();
-        console.error('❌ API Error Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          body: errorText
-        });
+        console.error('❌ === API ERROR RESPONSE ===');
+        console.error('❌ Status:', response.status, response.statusText);
+        console.error('❌ Error body:', errorText);
         
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
         try {
           const errorJson = JSON.parse(errorText);
+          console.error('❌ Parsed error JSON:', errorJson);
           errorMessage = errorJson.error || errorJson.details || errorMessage;
         } catch (e) {
-          // If response is not JSON, use the text as is
+          console.error('❌ Failed to parse error as JSON, using raw text');
           errorMessage = errorText || errorMessage;
         }
         
         throw new Error(errorMessage);
       }
     } catch (error) {
-      console.error('Chat error:', error);
+      console.error('❌ === CHAT ERROR ===');
+      console.error('❌ Error type:', error.constructor.name);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
+      
       const errorMessage = {
         id: Date.now() + 1,
         type: 'error',
@@ -271,6 +329,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       setMessages(finalMessages);
     } finally {
       setIsLoading(false);
+      console.log('🏁 === CHAT SEND END ===');
     }
   };
 
@@ -286,16 +345,16 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
     
     // Performance Heatmap이 선택될 때 특별한 로그 추가
     if (context.id === 'performance_heatmap') {
-      console.log('🎯 Performance Heatmap Selected:');
-      console.log('📋 Context details:', {
-        id: context.id,
-        name: context.name,
-        type: context.type,
-        hasImageData: Array.isArray(context.data) && context.data.length > 0,
-        imageDataLength: Array.isArray(context.data) ? context.data[0]?.length || 0 : 0,
-        imageDataPreview: Array.isArray(context.data) && context.data[0] ? 
-          context.data[0].substring(0, 100) + '...' : 'No image data'
-      });
+      // console.log('🎯 Performance Heatmap Selected:');
+      // console.log('📋 Context details:', {
+      //   id: context.id,
+      //   name: context.name,
+      //   type: context.type,
+      //   hasImageData: Array.isArray(context.data) && context.data.length > 0,
+      //   imageDataLength: Array.isArray(context.data) ? context.data[0]?.length || 0 : 0,
+      //   imageDataPreview: Array.isArray(context.data) && context.data[0] && typeof context.data[0] === 'string' ? 
+      //     context.data[0].substring(0, 100) + '...' : 'No image data'
+      // });
     }
     
     setSelectedContexts(prev => {

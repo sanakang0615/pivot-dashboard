@@ -114,11 +114,11 @@ const AnalysisPage = () => {
 
   // Clerk 인증 상태 디버깅
   useEffect(() => {
-    console.log('🔐 Clerk Auth State:', {
-      userId,
-      isSignedIn,
-      analysisId
-    });
+    // console.log('🔐 Clerk Auth State:', {
+    //   userId,
+    //   isSignedIn,
+    //   analysisId
+    // });
   }, [userId, isSignedIn, analysisId]);
 
   useEffect(() => {
@@ -127,13 +127,13 @@ const AnalysisPage = () => {
     // Case 1: New analysis result from navigation state.
     // It has `analysisId` and `pivotTables`, but no `_id` yet.
     if (analysisFromState && analysisFromState.analysisId === analysisId && analysisFromState.pivotTables && !analysisFromState._id) {
-      console.log('📊 Using analysis from navigation state (new analysis):', analysisFromState);
+      //console.log('📊 Using analysis from navigation state (new analysis):', analysisFromState);
       setAnalysis(analysisFromState);
       setLoading(false);
     } 
     // Case 2: Existing analysis, refresh, direct navigation, or sidebar click. Fetch from server.
     else if (analysisId && userId && isSignedIn) {
-      console.log('📊 Fetching analysis from server for ID:', analysisId);
+      //console.log('📊 Fetching analysis from server for ID:', analysisId);
       fetchAnalysis();
     } else if (!isSignedIn) {
       navigate('/');
@@ -158,16 +158,16 @@ const AnalysisPage = () => {
 
       const data = await response.json();
       if (data.success) {
-        console.log('📊 Analysis data received:', data.analysis);
+        //console.log('📊 Analysis data received:', data.analysis);
         
         let fetchedAnalysis = data.analysis;
 
         // Log createdAt field for debugging
-        console.log('📅 createdAt field:', {
-          value: fetchedAnalysis.createdAt,
-          type: typeof fetchedAnalysis.createdAt,
-          isValid: fetchedAnalysis.createdAt && !isNaN(new Date(fetchedAnalysis.createdAt).getTime())
-        });
+        // console.log('📅 createdAt field:', {
+        //   value: fetchedAnalysis.createdAt,
+        //   type: typeof fetchedAnalysis.createdAt,
+        //   isValid: fetchedAnalysis.createdAt && !isNaN(new Date(fetchedAnalysis.createdAt).getTime())
+        // });
 
         // [Defensive Code] - Enhanced data type safety
         // Ensure pivotTables is always a valid object with arrays
@@ -175,7 +175,7 @@ const AnalysisPage = () => {
           const safePivotTables = {};
           Object.keys(fetchedAnalysis.pivotTables).forEach(key => {
             const value = fetchedAnalysis.pivotTables[key];
-            console.log(`🔍 Processing pivot table key "${key}":`, { value, type: typeof value, isArray: Array.isArray(value) });
+            //console.log(`🔍 Processing pivot table key "${key}":`, { value, type: typeof value, isArray: Array.isArray(value) });
             
             if (Array.isArray(value)) {
               safePivotTables[key] = value;
@@ -236,7 +236,7 @@ const AnalysisPage = () => {
 
   const fetchAnalysisList = async () => {
     try {
-      console.log('🔍 Fetching analysis list for user:', userId);
+      //console.log('🔍 Fetching analysis list for user:', userId);
       
       if (!userId) {
         console.error('❌ No user ID available');
@@ -250,7 +250,7 @@ const AnalysisPage = () => {
         }
       });
 
-      console.log('📡 Response status:', response.status);
+      //console.log('📡 Response status:', response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -259,7 +259,7 @@ const AnalysisPage = () => {
       }
 
       const result = await response.json();
-      console.log('📊 Analysis list result:', result);
+      //console.log('📊 Analysis list result:', result);
       
       if (result.success) {
         setAnalysisList(result.analyses || []);
@@ -284,7 +284,7 @@ const AnalysisPage = () => {
       try {
         const heatmapImage = heatmapRef.current.getImageAsBase64();
         if (heatmapImage) {
-          console.log('🔥 Generated heatmap image:', heatmapImage.length, 'characters');
+          //console.log('🔥 Generated heatmap image:', heatmapImage.length, 'characters');
           setAnalysis(prev => ({
             ...prev,
             heatmapImage: heatmapImage
@@ -327,7 +327,7 @@ const AnalysisPage = () => {
 
       const result = await response.json();
       if (result.success) {
-        console.log('✅ Analysis saved successfully');
+        //console.log('✅ Analysis saved successfully');
         // Optionally update sidebar or other components
       } else {
         console.error('Failed to save analysis:', result.error);
@@ -397,18 +397,18 @@ const AnalysisPage = () => {
   }, [analysis?.pivotTables?.Campaign, analysis?.heatmapImage]);
 
   // 분석 데이터가 변경될 때마다 로깅
-  useEffect(() => {
-    if (analysis) {
-      console.log('📊 Analysis state updated:', {
-        hasPivotTables: !!analysis.pivotTables,
-        pivotTablesType: typeof analysis.pivotTables,
-        pivotTablesKeys: analysis.pivotTables ? Object.keys(analysis.pivotTables) : [],
-        hasCampaign: analysis.pivotTables && analysis.pivotTables.Campaign,
-        campaignType: analysis.pivotTables?.Campaign ? typeof analysis.pivotTables.Campaign : 'undefined',
-        campaignLength: analysis.pivotTables?.Campaign ? (Array.isArray(analysis.pivotTables.Campaign) ? analysis.pivotTables.Campaign.length : 'not array') : 'undefined'
-      });
-    }
-  }, [analysis]);
+  // useEffect(() => {
+  //   if (analysis) {
+  //     console.log('📊 Analysis state updated:', {
+  //       hasPivotTables: !!analysis.pivotTables,
+  //       pivotTablesType: typeof analysis.pivotTables,
+  //       pivotTablesKeys: analysis.pivotTables ? Object.keys(analysis.pivotTables) : [],
+  //       hasCampaign: analysis.pivotTables && analysis.pivotTables.Campaign,
+  //       campaignType: analysis.pivotTables?.Campaign ? typeof analysis.pivotTables.Campaign : 'undefined',
+  //       campaignLength: analysis.pivotTables?.Campaign ? (Array.isArray(analysis.pivotTables.Campaign) ? analysis.pivotTables.Campaign.length : 'not array') : 'undefined'
+  //     });
+  //   }
+  // }, [analysis]);
 
   if (loading) {
     return (
@@ -1016,8 +1016,8 @@ const AnalysisPage = () => {
 
           {/* Pivot Tables */}
           {(() => {
-            console.log('🔍 Checking pivotTables condition:', !!analysis.pivotTables);
-            console.log('🔍 pivotTables content:', analysis.pivotTables);
+            //console.log('🔍 Checking pivotTables condition:', !!analysis.pivotTables);
+            //console.log('🔍 pivotTables content:', analysis.pivotTables);
             
             // pivotTables가 존재하고 객체이며, 최소 하나의 키가 있고, 그 값이 배열인지 확인
             const hasValidPivotTables = analysis.pivotTables && 
@@ -1025,7 +1025,7 @@ const AnalysisPage = () => {
               Object.keys(analysis.pivotTables).length > 0 &&
               Object.values(analysis.pivotTables).some(data => Array.isArray(data) && data.length > 0);
             
-            console.log('🔍 hasValidPivotTables:', hasValidPivotTables);
+            //console.log('🔍 hasValidPivotTables:', hasValidPivotTables);
             
             if (!hasValidPivotTables) {
               return (
@@ -1056,7 +1056,7 @@ const AnalysisPage = () => {
             
             try {
               Object.entries(analysis.pivotTables).forEach(([level, data]) => {
-                console.log(`🔍 Processing pivot table "${level}":`, { data, type: typeof data, isArray: Array.isArray(data) });
+                //console.log(`🔍 Processing pivot table "${level}":`, { data, type: typeof data, isArray: Array.isArray(data) });
                 
                 if (Array.isArray(data) && data.length > 0) {
                   // 각 배열 항목이 객체인지 확인
@@ -1070,7 +1070,7 @@ const AnalysisPage = () => {
                   
                   if (validData.length > 0) {
                     validPivotTables.push({ level, data: validData });
-                    console.log(`✅ Valid pivot table "${level}" with ${validData.length} items`);
+                    //console.log(`✅ Valid pivot table "${level}" with ${validData.length} items`);
                   } else {
                     console.warn(`⚠️ No valid items found in ${level}`);
                   }
@@ -1079,10 +1079,10 @@ const AnalysisPage = () => {
                 }
               });
             } catch (error) {
-              console.error('❌ Error processing pivot tables:', error);
+              // console.error('❌ Error processing pivot tables:', error);
             }
             
-            console.log('🔍 Valid pivot tables:', validPivotTables);
+            //console.log('🔍 Valid pivot tables:', validPivotTables);
             
             if (validPivotTables.length === 0) {
               return (
@@ -1134,8 +1134,8 @@ const AnalysisPage = () => {
               Array.isArray(campaignData) && 
               campaignData.length > 0;
             
-            console.log('🔥 Checking heatmap condition:', hasValidCampaignData);
-            console.log('🔥 Campaign data:', campaignData);
+            // console.log('🔥 Checking heatmap condition:', hasValidCampaignData);
+            // console.log('🔥 Campaign data:', campaignData);
             
             if (!hasValidCampaignData) {
               return (

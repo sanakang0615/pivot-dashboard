@@ -38,11 +38,11 @@ const ContextSelector = ({ analysisData, onSelect, selectedContexts, onClose }) 
       const heatmapData = analysisData.heatmapImage ? [analysisData.heatmapImage] : [];
       
       // 콘솔에 히트맵 데이터 로그 추가
-      console.log('🔥 Performance Heatmap Context Data:');
-      console.log('📊 Has heatmapImage:', !!analysisData.heatmapImage);
-      console.log('📏 Image data length:', analysisData.heatmapImage ? analysisData.heatmapImage.length : 0);
-      console.log('🖼️ Image data preview:', analysisData.heatmapImage ? analysisData.heatmapImage.substring(0, 100) + '...' : 'No image');
-      console.log('📦 Final data array:', heatmapData);
+      // console.log('🔥 Performance Heatmap Context Data:');
+      // console.log('📊 Has heatmapImage:', !!analysisData.heatmapImage);
+      // console.log('📏 Image data length:', analysisData.heatmapImage ? analysisData.heatmapImage.length : 0);
+      // console.log('🖼️ Image data preview:', analysisData.heatmapImage ? analysisData.heatmapImage.substring(0, 100) + '...' : 'No image');
+      // console.log('📦 Final data array:', heatmapData);
       
       options.push({
         id: 'performance_heatmap',

@@ -73,7 +73,7 @@ const Analysis = () => {
       }
       
       setFileData(result);
-      console.log('File uploaded, columns extracted:', result.columns);
+      //console.log('File uploaded, columns extracted:', result.columns);
       
       await suggestColumnMapping(result.columns, result.fileId);
       
@@ -101,7 +101,7 @@ const Analysis = () => {
         throw new Error(result.error || 'Column mapping suggestion failed.');
       }
       
-      console.log('Column mapping suggested:', result);
+      //console.log('Column mapping suggested:', result);
       setMappingResult({ ...result, fileId });
       setShowMappingModal(true);
       setStep(2);
@@ -140,7 +140,7 @@ const Analysis = () => {
         throw new Error(result.error || 'Analysis execution failed.');
       }
       
-      console.log('Analysis completed:', result);
+      //console.log('Analysis completed:', result);
 
       setAnalysisResult(result);
       
@@ -957,7 +957,7 @@ const Analysis = () => {
 
 // Pivot Table Card Component
 const PivotTableCard = ({ level, data, formatNumber }) => {
-  console.log(`🔍 PivotTableCard rendering for ${level}:`, { data, type: typeof data, isArray: Array.isArray(data) });
+  //console.log(`🔍 PivotTableCard rendering for ${level}:`, { data, type: typeof data, isArray: Array.isArray(data) });
   
   // 데이터 검증
   if (!data || !Array.isArray(data) || data.length === 0) {
@@ -1019,7 +1019,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
     );
   }
 
-  console.log(`✅ Rendering PivotTableCard for ${level} with ${safeData.length} valid rows`);
+  //console.log(`✅ Rendering PivotTableCard for ${level} with ${safeData.length} valid rows`);
 
   return (
     <div style={{

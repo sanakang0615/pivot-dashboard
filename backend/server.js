@@ -8,6 +8,7 @@ const fs = require('fs');
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { processDataWithGemini, generateWeeklyReportWithGemini, generateTimeBasedAnalysisWithGemini } = require('./utils/geminiProcessor');
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -318,32 +319,10 @@ const generateColumnMapping = async (columns) => {
 }
     `;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 1024,
-        }
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
-    }
-
-    const result = await response.json();
-    const mappingText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent(prompt);
+    const mappingText = result.response.text();
     
     if (!mappingText) {
       throw new Error('No mapping result from Gemini API');
@@ -540,51 +519,23 @@ ${dataStr}`;
 
     console.log('Sending request to Gemini API with data length:', data.length);
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error details:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
-      });
-      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    let geminiResponseText = '';
+    try {
+      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const result = await model.generateContent(prompt);
+      geminiResponseText = result.response.text();
+      console.log('✅ Gemini 2.5-flash response:', geminiResponseText.substring(0, 200) + '...');
+    } catch (err) {
+      console.error('❌ Gemini 2.5-flash API error:', err);
+      throw new Error('Gemini 2.5-flash API error: ' + err.message);
     }
 
-    const result = await response.json();
-    console.log('Gemini API response structure:', {
-      hasCandidates: !!result.candidates,
-      candidateCount: result.candidates?.length,
-      hasContent: !!result.candidates?.[0]?.content,
-      hasParts: !!result.candidates?.[0]?.content?.parts
-    });
-
-    const insights = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!insights) {
-      console.warn('No insights generated from Gemini API, using fallback');
-      return generateSimpleInsights(data);
+    if (!geminiResponseText) {
+      throw new Error('No response generated from Gemini 2.5-flash API');
     }
 
-    return insights;
+    return geminiResponseText;
   } catch (error) {
     console.error('AI Insights Error:', error);
     return generateSimpleInsights(data);
@@ -795,32 +746,7 @@ ${JSON.stringify(pivotTables.Ad, null, 2)}
     
     if (GEMINI_API_KEY) {
       try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: reportPrompt
-              }]
-            }],
-            generationConfig: {
-              temperature: 0.7,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 2048,
-            }
-          })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          insights = result.candidates?.[0]?.content?.parts?.[0]?.text || '리포트 생성에 실패했습니다.';
-        } else {
-          insights = '리포트 생성에 실패했습니다.';
-        }
+        insights = await generateAIInsights(fileData.data, 'general');
       } catch (error) {
         console.error('Gemini API error:', error);
         insights = '리포트 생성에 실패했습니다.';
@@ -1530,12 +1456,29 @@ app.use('/api/chat/*', (req, res, next) => {
 
 // Send message to Gemini AI
 app.post('/api/chat/send', async (req, res) => {
-  console.log('🎯 HIT: /api/chat/send route');
+  console.log('🎯 === CHAT SEND API HIT ===');
+  console.log('🎯 Route: /api/chat/send');
+  console.log('🎯 Method:', req.method);
+  console.log('🎯 Headers:', {
+    'x-user-id': req.headers['x-user-id'],
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length']
+  });
+  
   try {
     const userId = req.headers['x-user-id'];
     const { message, contexts, analysisData, chatHistory } = req.body;
     
+    console.log('📥 === REQUEST BODY PARSED ===');
+    console.log('👤 User ID:', userId);
+    console.log('📝 Message length:', message ? message.length : 0);
+    console.log('📝 Message preview:', message ? message.substring(0, 100) + '...' : 'No message');
+    console.log('🔗 Contexts count:', contexts ? contexts.length : 0);
+    console.log('📊 Has analysis data:', !!analysisData);
+    console.log('💬 Chat history count:', chatHistory ? chatHistory.length : 0);
+    
     if (!userId) {
+      console.error('❌ No user ID provided');
       return res.status(401).json({ 
         success: false, 
         error: 'User ID is required' 
@@ -1543,52 +1486,56 @@ app.post('/api/chat/send', async (req, res) => {
     }
 
     if (!message || typeof message !== 'string') {
+      console.error('❌ Invalid message format');
       return res.status(400).json({
         success: false,
         error: 'Message is required'
       });
     }
 
-    console.log('🤖 Processing chat message:', {
-      userId,
-      messageLength: message.length,
-      contextCount: contexts ? contexts.length : 0,
-      hasAnalysisData: !!analysisData,
-      chatHistoryLength: chatHistory ? chatHistory.length : 0
-    });
+    console.log('🤖 === PROCESSING CHAT MESSAGE ===');
+    console.log('🤖 Processing for user:', userId);
+    console.log('🤖 Message length:', message.length);
+    console.log('🤖 Context count:', contexts ? contexts.length : 0);
+    console.log('🤖 Has analysis data:', !!analysisData);
+    console.log('🤖 Chat history length:', chatHistory ? chatHistory.length : 0);
 
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     
+    console.log('🔑 === GEMINI API KEY CHECK ===');
+    console.log('🔑 API Key present:', !!GEMINI_API_KEY);
+    console.log('🔑 API Key length:', GEMINI_API_KEY ? GEMINI_API_KEY.length : 0);
+    console.log('🔑 API Key preview:', GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'No key');
+    
     if (!GEMINI_API_KEY) {
-      console.log('No Gemini API key found, using fallback response');
+      console.log('❌ No Gemini API key found, using fallback response');
       return res.json({
         success: true,
         response: "I'm sorry, but I need a valid API key to provide intelligent responses. Please check your configuration and try again."
       });
     }
 
+    console.log('📝 === BUILDING PROMPT ===');
+    
     // Build context for Gemini
-    let fullPrompt = `You are an AI assistant specialized in marketing data analysis. You have access to campaign performance data and should provide helpful insights, answer questions, and make recommendations based on the data provided.
+    let fullPrompt = `You are an AI assistant specialized in marketing data analysis. You have access to campaign performance data and should provide helpful insights, answer questions, and make recommendations based on the data provided.\n\nUser's question: ${message}\n\n`;
 
-User's question: ${message}
-
-`;
+    console.log('📝 Base prompt length:', fullPrompt.length);
 
     // Add analysis context if provided
     if (analysisData) {
-      fullPrompt += `\nAnalysis Context:
-- File: ${analysisData.fileName || 'Unknown'}
-- Total rows: ${analysisData.metadata?.rowCount || 'Unknown'}
-- Created: ${analysisData.createdAt ? new Date(analysisData.createdAt).toLocaleDateString() : 'Unknown'}
-
-`;
+      console.log('📊 Adding analysis context...');
+      fullPrompt += `\nAnalysis Context:\n- File: ${analysisData.fileName || 'Unknown'}\n- Total rows: ${analysisData.metadata?.rowCount || 'Unknown'}\n- Created: ${analysisData.createdAt ? new Date(analysisData.createdAt).toLocaleDateString() : 'Unknown'}\n\n`;
+      console.log('📊 Analysis context added');
     }
 
     // Add specific data contexts if selected
     if (contexts && contexts.length > 0) {
+      console.log('🔗 === ADDING CONTEXT DATA ===');
       fullPrompt += `\nSpecific Data Context:\n`;
       
-      contexts.forEach(context => {
+      contexts.forEach((context, index) => {
+        console.log(`🔗 Context ${index + 1}: ${context.name} (${context.type})`);
         fullPrompt += `\n${context.name}:\n`;
         
         if (context.type === 'data' || context.type === 'pivot') {
@@ -1596,43 +1543,55 @@ User's question: ${message}
           const limitedData = Array.isArray(context.data) 
             ? context.data.slice(0, 20)
             : context.data;
+          console.log(`  📊 Data type: ${context.type}, Limited to 20 items`);
           fullPrompt += JSON.stringify(limitedData, null, 2);
         } else if (context.type === 'report') {
+          console.log(`  📄 Report data length: ${context.data ? context.data.length : 0}`);
           fullPrompt += context.data;
         } else if (context.type === 'visualization') {
+          console.log(`  🖼️ Visualization type detected`);
           // Check if this is a heatmap with base64 image data
           if (Array.isArray(context.data) && context.data.length > 0 && 
               typeof context.data[0] === 'string' && context.data[0].startsWith('data:image')) {
+            console.log(`  🔥 Heatmap image detected`);
             fullPrompt += `Heatmap visualization image (base64 encoded):\n`;
             fullPrompt += `![Performance Heatmap](${context.data[0]})\n`;
             fullPrompt += `This is a visual representation of campaign performance metrics. Please analyze this heatmap image and provide insights about the performance patterns shown.`;
           } else {
+            console.log(`  📊 Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`);
             fullPrompt += `Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`;
           }
         }
         fullPrompt += '\n';
       });
+      console.log('🔗 Context data added to prompt');
     }
 
     // Add recent chat history for context
     if (chatHistory && chatHistory.length > 0) {
+      console.log('💬 Adding chat history...');
       fullPrompt += `\nRecent conversation history:\n`;
-      chatHistory.forEach(msg => {
+      chatHistory.forEach((msg, index) => {
+        console.log(`  💬 Message ${index + 1}: ${msg.type} - ${msg.content.substring(0, 50)}...`);
         fullPrompt += `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
       });
+      console.log('💬 Chat history added');
     }
+
+    console.log('📝 Final prompt length:', fullPrompt.length);
 
     // Check if we have any heatmap images in contexts
     const heatmapImages = [];
     if (contexts && contexts.length > 0) {
-      contexts.forEach(context => {
+      console.log('🖼️ === CHECKING FOR HEATMAP IMAGES ===');
+      contexts.forEach((context, index) => {
         if (context.type === 'visualization' && 
             Array.isArray(context.data) && 
             context.data.length > 0 && 
             typeof context.data[0] === 'string' && 
             context.data[0].startsWith('data:image')) {
           heatmapImages.push(context.data[0]);
-          console.log('🔥 Heatmap image detected in context:', {
+          console.log(`🔥 Heatmap image ${index + 1} detected in context:`, {
             contextName: context.name,
             imageDataLength: context.data[0].length,
             imageDataPreview: context.data[0].substring(0, 100) + '...'
@@ -1645,81 +1604,47 @@ User's question: ${message}
 
     // If we have heatmap images, update the prompt to mention image analysis
     if (heatmapImages.length > 0) {
-      fullPrompt += `\n\nIMPORTANT: You have been provided with a heatmap visualization image showing campaign performance metrics. Please analyze this image and provide insights about:
-- Performance patterns visible in the heatmap
-- Which campaigns/ads are performing well (darker green areas)
-- Which campaigns/ads need attention (darker red areas)
-- Overall performance distribution and trends
-- Specific recommendations based on the visual patterns you observe
-
-Please reference the heatmap image in your analysis and provide specific insights about what you can see in the visualization.`;
+      console.log('🖼️ Adding heatmap analysis instructions...');
+      fullPrompt += `\n\nIMPORTANT: You have been provided with a heatmap visualization image showing campaign performance metrics. Please analyze this image and provide insights about:\n- Performance patterns visible in the heatmap\n- Which campaigns/ads are performing well (darker green areas)\n- Which campaigns/ads need attention (darker red areas)\n- Overall performance distribution and trends\n- Specific recommendations based on the visual patterns you observe\n\nPlease reference the heatmap image in your analysis and provide specific insights about what you can see in the visualization.`;
     }
 
     fullPrompt += `\nPlease provide a helpful, accurate response based on the data and context provided. Use markdown formatting for better readability. Focus on actionable insights and specific recommendations when possible.`;
 
-    console.log('📤 Sending request to Gemini API...');
-    console.log('📦 Request parts count:', parts.length);
-    console.log('🖼️ Parts with images:', parts.filter(part => part.inlineData).length);
+    console.log('📤 === PREPARING GEMINI API REQUEST ===');
+    console.log('📤 Final prompt length:', fullPrompt.length);
+    console.log('📤 Heatmap images count:', heatmapImages.length);
 
-    // Prepare request parts
-    const parts = [{
-      text: fullPrompt
-    }];
-
-    // Add heatmap images if available
-    heatmapImages.forEach(imageData => {
-      // Extract base64 data from data URL
-      const base64Data = imageData.split(',')[1];
-      parts.push({
-        inlineData: {
-          mimeType: "image/png",
-          data: base64Data
-        }
-      });
-    });
-
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: parts
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          topK: 40,
-          topP: 0.95,
-          maxOutputTokens: 2048,
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText
-      });
-      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+    // Prepare request parts (for Gemini 2.5 SDK)
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    let geminiResponseText = '';
+    try {
+      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const result = await model.generateContent(fullPrompt);
+      geminiResponseText = result.response.text();
+      console.log('✅ Gemini 2.5-flash response:', geminiResponseText.substring(0, 200) + '...');
+    } catch (err) {
+      console.error('❌ Gemini 2.5-flash API error:', err);
+      throw new Error('Gemini 2.5-flash API error: ' + err.message);
     }
 
-    const result = await response.json();
-    console.log('📥 Received Gemini API response');
-
-    const aiResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!aiResponse) {
-      throw new Error('No response generated from Gemini API');
+    if (!geminiResponseText) {
+      throw new Error('No response generated from Gemini 2.5-flash API');
     }
 
+    console.log('📤 === SENDING RESPONSE TO CLIENT ===');
     res.json({
       success: true,
-      response: aiResponse
+      response: geminiResponseText
     });
+    console.log('✅ Response sent to client successfully');
+    
   } catch (error) {
-    console.error('Chat API error:', error);
+    console.error('❌ === CHAT API ERROR ===');
+    console.error('❌ Error type:', error.constructor.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Full error object:', error);
+    
     res.status(500).json({
       success: false,
       error: 'Failed to process chat message',

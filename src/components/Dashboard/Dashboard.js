@@ -36,7 +36,7 @@ const Dashboard = () => {
     
     // 페이지 포커스 시 자동 새로고침
     const handleFocus = () => {
-      console.log('Page focused, refreshing analyses...');
+      //console.log('Page focused, refreshing analyses...');
       fetchAnalyses();
     };
     
