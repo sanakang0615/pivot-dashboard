@@ -320,9 +320,11 @@ const generateColumnMapping = async (columns) => {
     `;
 
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
-    const mappingText = result.response.text();
+    const response = await ai.models.generateContent({
+      model: "gemini-1.5-flash",
+      contents: prompt,
+    });
+    const mappingText = response.text;
     
     if (!mappingText) {
       throw new Error('No mapping result from Gemini API');
@@ -522,17 +524,19 @@ ${dataStr}`;
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     let geminiResponseText = '';
     try {
-      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
-      const result = await model.generateContent(prompt);
-      geminiResponseText = result.response.text();
-      console.log('✅ Gemini 2.5-flash response:', geminiResponseText.substring(0, 200) + '...');
+      const response = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: prompt,
+      });
+      geminiResponseText = response.text;
+      console.log('✅ Gemini 1.5-flash response:', geminiResponseText.substring(0, 200) + '...');
     } catch (err) {
-      console.error('❌ Gemini 2.5-flash API error:', err);
-      throw new Error('Gemini 2.5-flash API error: ' + err.message);
+      console.error('❌ Gemini 1.5-flash API error:', err);
+      throw new Error('Gemini 1.5-flash API error: ' + err.message);
     }
 
     if (!geminiResponseText) {
-      throw new Error('No response generated from Gemini 2.5-flash API');
+      throw new Error('No response generated from Gemini 1.5-flash API');
     }
 
     return geminiResponseText;
@@ -1614,21 +1618,23 @@ app.post('/api/chat/send', async (req, res) => {
     console.log('📤 Final prompt length:', fullPrompt.length);
     console.log('📤 Heatmap images count:', heatmapImages.length);
 
-    // Prepare request parts (for Gemini 2.5 SDK)
+    // Prepare request parts (for Gemini 1.5 SDK)
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     let geminiResponseText = '';
     try {
-      const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
-      const result = await model.generateContent(fullPrompt);
-      geminiResponseText = result.response.text();
-      console.log('✅ Gemini 2.5-flash response:', geminiResponseText.substring(0, 200) + '...');
+      const response = await ai.models.generateContent({
+        model: "gemini-1.5-flash",
+        contents: fullPrompt,
+      });
+      geminiResponseText = response.text;
+      console.log('✅ Gemini 1.5-flash response:', geminiResponseText.substring(0, 200) + '...');
     } catch (err) {
-      console.error('❌ Gemini 2.5-flash API error:', err);
-      throw new Error('Gemini 2.5-flash API error: ' + err.message);
+      console.error('❌ Gemini 1.5-flash API error:', err);
+      throw new Error('Gemini 1.5-flash API error: ' + err.message);
     }
 
     if (!geminiResponseText) {
-      throw new Error('No response generated from Gemini 2.5-flash API');
+      throw new Error('No response generated from Gemini 1.5-flash API');
     }
 
     console.log('📤 === SENDING RESPONSE TO CLIENT ===');
