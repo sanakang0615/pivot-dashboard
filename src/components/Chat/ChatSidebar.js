@@ -172,6 +172,22 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       console.log('📝 User Message:', requestBody.message);
       console.log('🔗 Current Selected Contexts:', userMessage.contexts.map(c => c.name));
       console.log('📚 All Contexts in Conversation:', requestBody.contexts.map(c => c.name));
+      
+      // 히트맵 이미지가 포함된 컨텍스트가 있는지 확인하고 로그
+      const heatmapContexts = requestBody.contexts.filter(c => c.id === 'performance_heatmap');
+      if (heatmapContexts.length > 0) {
+        console.log('🔥 Heatmap Contexts Found:', heatmapContexts.length);
+        heatmapContexts.forEach((context, index) => {
+          console.log(`🔥 Heatmap Context ${index + 1}:`, {
+            name: context.name,
+            hasImageData: Array.isArray(context.data) && context.data.length > 0,
+            imageDataLength: Array.isArray(context.data) ? context.data[0]?.length || 0 : 0,
+            imageDataStartsWith: Array.isArray(context.data) && context.data[0] ? 
+              context.data[0].substring(0, 50) + '...' : 'No image data'
+          });
+        });
+      }
+      
       console.log('📊 Analysis Data:', requestBody.analysisData);
       console.log('💬 Chat History:', requestBody.chatHistory.length, 'messages');
       console.log('📦 Full Request Body:', JSON.stringify(requestBody, null, 2));
@@ -268,6 +284,20 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const handleContextSelect = (context) => {
     const isAdding = !selectedContexts.some(c => c.id === context.id);
     
+    // Performance Heatmap이 선택될 때 특별한 로그 추가
+    if (context.id === 'performance_heatmap') {
+      console.log('🎯 Performance Heatmap Selected:');
+      console.log('📋 Context details:', {
+        id: context.id,
+        name: context.name,
+        type: context.type,
+        hasImageData: Array.isArray(context.data) && context.data.length > 0,
+        imageDataLength: Array.isArray(context.data) ? context.data[0]?.length || 0 : 0,
+        imageDataPreview: Array.isArray(context.data) && context.data[0] ? 
+          context.data[0].substring(0, 100) + '...' : 'No image data'
+      });
+    }
+    
     setSelectedContexts(prev => {
       const exists = prev.find(c => c.id === context.id);
       if (exists) {
@@ -309,6 +339,11 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       
       if (data.insights && typeof data.insights === 'string' && data.insights.length < 1000) {
         sanitized.insights = data.insights;
+      }
+      
+      // Include heatmap image if available
+      if (data.heatmapImage && typeof data.heatmapImage === 'string') {
+        sanitized.heatmapImage = data.heatmapImage;
       }
       
       return sanitized;

@@ -1600,7 +1600,15 @@ User's question: ${message}
         } else if (context.type === 'report') {
           fullPrompt += context.data;
         } else if (context.type === 'visualization') {
-          fullPrompt += `Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`;
+          // Check if this is a heatmap with base64 image data
+          if (Array.isArray(context.data) && context.data.length > 0 && 
+              typeof context.data[0] === 'string' && context.data[0].startsWith('data:image')) {
+            fullPrompt += `Heatmap visualization image (base64 encoded):\n`;
+            fullPrompt += `![Performance Heatmap](${context.data[0]})\n`;
+            fullPrompt += `This is a visual representation of campaign performance metrics. Please analyze this heatmap image and provide insights about the performance patterns shown.`;
+          } else {
+            fullPrompt += `Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`;
+          }
         }
         fullPrompt += '\n';
       });
@@ -1614,9 +1622,61 @@ User's question: ${message}
       });
     }
 
+    // Check if we have any heatmap images in contexts
+    const heatmapImages = [];
+    if (contexts && contexts.length > 0) {
+      contexts.forEach(context => {
+        if (context.type === 'visualization' && 
+            Array.isArray(context.data) && 
+            context.data.length > 0 && 
+            typeof context.data[0] === 'string' && 
+            context.data[0].startsWith('data:image')) {
+          heatmapImages.push(context.data[0]);
+          console.log('🔥 Heatmap image detected in context:', {
+            contextName: context.name,
+            imageDataLength: context.data[0].length,
+            imageDataPreview: context.data[0].substring(0, 100) + '...'
+          });
+        }
+      });
+    }
+
+    console.log('🖼️ Total heatmap images found:', heatmapImages.length);
+
+    // If we have heatmap images, update the prompt to mention image analysis
+    if (heatmapImages.length > 0) {
+      fullPrompt += `\n\nIMPORTANT: You have been provided with a heatmap visualization image showing campaign performance metrics. Please analyze this image and provide insights about:
+- Performance patterns visible in the heatmap
+- Which campaigns/ads are performing well (darker green areas)
+- Which campaigns/ads need attention (darker red areas)
+- Overall performance distribution and trends
+- Specific recommendations based on the visual patterns you observe
+
+Please reference the heatmap image in your analysis and provide specific insights about what you can see in the visualization.`;
+    }
+
     fullPrompt += `\nPlease provide a helpful, accurate response based on the data and context provided. Use markdown formatting for better readability. Focus on actionable insights and specific recommendations when possible.`;
 
     console.log('📤 Sending request to Gemini API...');
+    console.log('📦 Request parts count:', parts.length);
+    console.log('🖼️ Parts with images:', parts.filter(part => part.inlineData).length);
+
+    // Prepare request parts
+    const parts = [{
+      text: fullPrompt
+    }];
+
+    // Add heatmap images if available
+    heatmapImages.forEach(imageData => {
+      // Extract base64 data from data URL
+      const base64Data = imageData.split(',')[1];
+      parts.push({
+        inlineData: {
+          mimeType: "image/png",
+          data: base64Data
+        }
+      });
+    });
 
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
@@ -1625,9 +1685,7 @@ User's question: ${message}
       },
       body: JSON.stringify({
         contents: [{
-          parts: [{
-            text: fullPrompt
-          }]
+          parts: parts
         }],
         generationConfig: {
           temperature: 0.7,
