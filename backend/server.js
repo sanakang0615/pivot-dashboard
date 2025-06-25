@@ -78,7 +78,8 @@ connectDB().catch(err => {
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://pivot-dashboard-production.up.railway.app'
+  'https://pivot-dashboard-production.up.railway.app',
+  'https://pivot-dashboard.vercel.app'
 ];
 
 // Middleware
