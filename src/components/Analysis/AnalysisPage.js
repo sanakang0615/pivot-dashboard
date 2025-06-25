@@ -23,6 +23,7 @@ const AnalysisPage = () => {
   const [renameModal, setRenameModal] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
+  const [generatingInsights, setGeneratingInsights] = useState(false);
   const heatmapRef = useRef(null);
   const contentRef = useRef(null);
   
@@ -409,6 +410,159 @@ const AnalysisPage = () => {
   //     });
   //   }
   // }, [analysis]);
+
+  // AI 인사이트 생성 함수 (개선된 버전)
+  const generateInsights = async () => {
+    if (!analysis || !analysis.pivotTables) {
+      console.error('❌ No analysis data or pivot tables available');
+      alert('분석 데이터나 피봇 테이블이 없습니다. 페이지를 새로고침해주세요.');
+      return;
+    }
+
+    // 피봇 테이블 데이터 검증
+    const validatedPivotTables = {};
+    let hasValidData = false;
+
+    Object.entries(analysis.pivotTables).forEach(([key, data]) => {
+      if (Array.isArray(data) && data.length > 0) {
+        const validData = data.filter(item => item && typeof item === 'object');
+        if (validData.length > 0) {
+          validatedPivotTables[key] = validData;
+          hasValidData = true;
+          console.log(`✅ Valid pivot table "${key}": ${validData.length} items`);
+        } else {
+          console.warn(`⚠️ No valid items in pivot table "${key}"`);
+        }
+      } else {
+        console.warn(`⚠️ Invalid pivot table data for "${key}":`, data);
+      }
+    });
+
+    if (!hasValidData) {
+      console.error('❌ No valid pivot table data found');
+      alert('유효한 피봇 테이블 데이터가 없습니다. 분석을 다시 실행해주세요.');
+      return;
+    }
+
+    setGeneratingInsights(true);
+    
+    try {
+      console.log('🤖 === GENERATING AI INSIGHTS ===');
+      console.log('🔗 API URL:', process.env.REACT_APP_API_URL || 'http://localhost:3001');
+      console.log('👤 User ID:', userId);
+      console.log('📊 Analysis ID:', analysis._id || analysis.analysisId);
+      console.log('📊 Validated pivot tables:', {
+        keys: Object.keys(validatedPivotTables),
+        totalItems: Object.values(validatedPivotTables).reduce((sum, data) => sum + data.length, 0)
+      });
+      
+      const requestBody = {
+        analysisId: analysis._id || analysis.analysisId,
+        pivotTables: validatedPivotTables
+      };
+      
+      console.log('📤 Request body:', {
+        analysisId: requestBody.analysisId,
+        pivotTablesKeys: Object.keys(requestBody.pivotTables),
+        bodySize: JSON.stringify(requestBody).length
+      });
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/insights`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': userId
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response status text:', response.statusText);
+      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      // 응답 텍스트 먼저 읽기 (디버깅용)
+      const responseText = await response.text();
+      console.log('📡 Raw response text:', responseText.substring(0, 500));
+      
+      if (!response.ok) {
+        console.error('❌ HTTP Error:', response.status, response.statusText);
+        console.error('❌ Response body:', responseText);
+        
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        
+        // 응답이 JSON인지 확인하고 에러 메시지 추출
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+          if (errorData.details) {
+            errorMessage += ` (${errorData.details})`;
+          }
+        } catch (parseError) {
+          console.warn('⚠️ Could not parse error response as JSON');
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      // JSON 파싱
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('❌ Failed to parse response as JSON:', parseError);
+        throw new Error('서버 응답을 파싱할 수 없습니다.');
+      }
+      
+      console.log('📥 Parsed response:', {
+        success: result.success,
+        hasInsights: !!result.insights,
+        insightsLength: result.insights ? result.insights.length : 0,
+        error: result.error
+      });
+      
+      if (result.success && result.insights) {
+        console.log('✅ AI insights generated successfully');
+        console.log('📝 Insights preview:', result.insights.substring(0, 200) + '...');
+        
+        // 분석 데이터 업데이트
+        setAnalysis(prev => ({
+          ...prev,
+          insights: result.insights
+        }));
+        
+        // 성공 메시지 (선택적)
+        // alert('AI 인사이트가 성공적으로 생성되었습니다!');
+      } else {
+        console.error('❌ API returned unsuccessful result:', result);
+        throw new Error(result.error || '알 수 없는 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('❌ === AI INSIGHTS GENERATION ERROR ===');
+      console.error('❌ Error type:', error.constructor.name);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
+      
+      let userMessage = 'AI 인사이트 생성에 실패했습니다.';
+      
+      if (error.message.includes('fetch')) {
+        userMessage += ' 네트워크 연결을 확인해주세요.';
+      } else if (error.message.includes('401')) {
+        userMessage += ' 인증에 실패했습니다. 다시 로그인해주세요.';
+      } else if (error.message.includes('404')) {
+        userMessage += ' API 엔드포인트를 찾을 수 없습니다. 서버 상태를 확인해주세요.';
+      } else if (error.message.includes('500')) {
+        userMessage += ' 서버 내부 오류입니다. 잠시 후 다시 시도해주세요.';
+      } else {
+        userMessage += ` (${error.message})`;
+      }
+      
+      alert(userMessage);
+    } finally {
+      setGeneratingInsights(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -992,8 +1146,7 @@ const AnalysisPage = () => {
                           day: 'numeric' 
                         });
                       } else {
-                        // createdAt이 없거나 유효하지 않으면 현재 시간 사용
-                        console.warn('⚠️ Invalid or missing createdAt, using current time:', analysis.createdAt);
+                        // createdAt이 없거나 유효하지 않으면 현재 시간 사용 (워닝 없이)
                         return new Date().toLocaleDateString('en-US', { 
                           year: 'numeric', 
                           month: 'long', 
@@ -1082,7 +1235,7 @@ const AnalysisPage = () => {
               // console.error('❌ Error processing pivot tables:', error);
             }
             
-            //console.log('🔍 Valid pivot tables:', validPivotTables);
+            //console.log('�� Valid pivot tables:', validPivotTables);
             
             if (validPivotTables.length === 0) {
               return (
@@ -1261,45 +1414,45 @@ const AnalysisPage = () => {
           })()}
 
           {/* AI Insights Report */}
-          {analysis.insights && (
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.8)',
-              backdropFilter: 'blur(20px)',
-              borderRadius: '20px',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
-              '@media print': {
-                background: 'white !important',
-                border: '1px solid #000 !important',
-                boxShadow: 'none !important',
-                borderRadius: '8px !important',
-                pageBreakInside: 'avoid',
-                marginBottom: '1rem'
-              }
-            }}>
-              <div style={{ padding: '2rem 2rem 1rem' }}>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '700',
-                  color: '#1e293b',
-                  margin: 0,
-                  marginBottom: '0.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                  <span className="tossface">🤖</span>
-                  AI Analysis Report
-                </h3>
-                <p style={{
-                  color: '#64748b',
-                  margin: 0,
-                  fontSize: '0.95rem'
-                }}>
-                  Gemini AI-generated insights and recommendations
-                </p>
-              </div>
-              <div style={{ padding: '0 2rem 2rem' }}>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '20px',
+            border: '1px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+            '@media print': {
+              background: 'white !important',
+              border: '1px solid #000 !important',
+              boxShadow: 'none !important',
+              borderRadius: '8px !important',
+              pageBreakInside: 'avoid',
+              marginBottom: '1rem'
+            }
+          }}>
+            <div style={{ padding: '2rem 2rem 1rem' }}>
+              <h3 style={{
+                fontSize: '1.25rem',
+                fontWeight: '700',
+                color: '#1e293b',
+                margin: 0,
+                marginBottom: '0.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span className="tossface">🤖</span>
+                AI Analysis Report
+              </h3>
+              <p style={{
+                color: '#64748b',
+                margin: 0,
+                fontSize: '0.95rem'
+              }}>
+                AI-generated insights and recommendations
+              </p>
+            </div>
+            <div style={{ padding: '0 2rem 2rem' }}>
+              {analysis.insights ? (
                 <div style={{
                   padding: '2rem',
                   background: 'rgba(255, 255, 255, 0.9)',
@@ -1380,9 +1533,116 @@ const AnalysisPage = () => {
                     {analysis.insights}
                   </ReactMarkdown>
                 </div>
-              </div>
+              ) : (
+                <div style={{
+                  padding: '3rem 2rem',
+                  textAlign: 'center',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  borderRadius: '16px',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
+                }}>
+                  {generatingInsights ? (
+                    <>
+                      <div style={{
+                        width: '60px',
+                        height: '60px',
+                        margin: '0 auto 1.5rem',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        borderRadius: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        animation: 'pulse 2s infinite'
+                      }}>
+                        <span className="tossface" style={{ fontSize: '1.8rem' }}>🤖</span>
+                      </div>
+                      <h4 style={{
+                        fontSize: '1.1rem',
+                        fontWeight: '600',
+                        color: '#1e293b',
+                        margin: '0 0 0.5rem 0'
+                      }}>
+                        Generating AI Insights...
+                      </h4>
+                      <p style={{
+                        color: '#64748b',
+                        fontSize: '0.95rem',
+                        margin: 0
+                      }}>
+                        This may take a few moments
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{
+                        width: '80px',
+                        height: '80px',
+                        margin: '0 auto 1.5rem',
+                        background: 'rgba(102, 126, 234, 0.1)',
+                        borderRadius: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}>
+                        <span className="tossface" style={{ fontSize: '2rem' }}>🤖</span>
+                      </div>
+                      <h4 style={{
+                        fontSize: '1.1rem',
+                        fontWeight: '600',
+                        color: '#1e293b',
+                        margin: '0 0 0.5rem 0'
+                      }}>
+                        No AI Insights Available
+                      </h4>
+                      <p style={{
+                        color: '#64748b',
+                        fontSize: '0.95rem',
+                        margin: '0 0 1.5rem 0',
+                        lineHeight: '1.5'
+                      }}>
+                        AI-powered analysis report has not been generated yet.
+                      </p>
+                      <button
+                        onClick={generateInsights}
+                        disabled={generatingInsights}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.5rem',
+                          padding: '0.75rem 1.5rem',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '10px',
+                          cursor: generatingInsights ? 'not-allowed' : 'pointer',
+                          fontSize: '0.95rem',
+                          fontWeight: '600',
+                          opacity: generatingInsights ? 0.7 : 1,
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!generatingInsights) {
+                            e.target.style.transform = 'translateY(-1px)';
+                            e.target.style.boxShadow = '0 8px 25px rgba(102, 126, 234, 0.3)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!generatingInsights) {
+                            e.target.style.transform = 'translateY(0)';
+                            e.target.style.boxShadow = 'none';
+                          }
+                        }}
+                      >
+                        <span className="tossface">🚀</span>
+                        Generate AI Insights
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </main>
       

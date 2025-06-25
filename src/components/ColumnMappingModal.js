@@ -90,8 +90,8 @@ const ColumnMappingModal = ({
           <div>
             <h3 className="text-lg font-semibold mb-4">컬럼 매핑 설정</h3>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {Object.entries(editedMapping).map(([userColumn, mappedColumn]) => (
-                <div key={userColumn} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+              {Object.entries(editedMapping).map(([userColumn, mappedColumn], idx) => (
+                <div key={userColumn + '-' + idx} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center">
                       <span className="font-medium text-gray-800 truncate" title={userColumn}>
@@ -138,8 +138,8 @@ const ColumnMappingModal = ({
               <div className="bg-green-50 border border-green-200 rounded p-3">
                 {getMappedStandardColumns().length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {getMappedStandardColumns().map(col => (
-                      <span key={col} className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
+                    {getMappedStandardColumns().map((col, idx) => (
+                      <span key={col + '-' + idx} className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">
                         {col}
                       </span>
                     ))}
@@ -156,8 +156,8 @@ const ColumnMappingModal = ({
                 <h4 className="font-medium text-orange-700 mb-2">⚠️ 누락된 표준 컬럼</h4>
                 <div className="bg-orange-50 border border-orange-200 rounded p-3">
                   <div className="flex flex-wrap gap-2">
-                    {getUnmappedStandardColumns().map(col => (
-                      <span key={col} className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm">
+                    {getUnmappedStandardColumns().map((col, idx) => (
+                      <span key={col + '-' + idx} className="bg-orange-100 text-orange-800 px-2 py-1 rounded text-sm">
                         {col}
                       </span>
                     ))}
@@ -175,8 +175,8 @@ const ColumnMappingModal = ({
                 <h4 className="font-medium text-gray-700 mb-2">🔍 매핑되지 않은 컬럼</h4>
                 <div className="bg-gray-50 border border-gray-200 rounded p-3">
                   <div className="flex flex-wrap gap-2">
-                    {mappingResult.unmapped.map(col => (
-                      <span key={col} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm">
+                    {mappingResult.unmapped.map((col, idx) => (
+                      <span key={col + '-' + idx} className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm">
                         {col}
                       </span>
                     ))}

@@ -121,8 +121,14 @@ const Analysis = () => {
     setError(null);
     
     try {
-      // Execute analysis
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/execute`, {
+      console.log('🚀 === STEP 1: EXECUTING ANALYSIS ===');
+      console.log('🔗 API URL:', process.env.REACT_APP_API_URL || 'http://localhost:3001');
+      console.log('👤 User ID:', userId);
+      console.log('📁 File ID:', mappingResult.fileId);
+      console.log('🗺️ Column Mapping:', confirmedMapping);
+      
+      // 1단계: 피벗테이블, 히트맵 생성
+      const analysisResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/execute`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -134,31 +140,137 @@ const Analysis = () => {
         })
       });
       
-      const result = await response.json();
+      console.log('📡 Analysis response status:', analysisResponse.status);
+      console.log('📡 Analysis response headers:', Object.fromEntries(analysisResponse.headers.entries()));
       
-      if (!result.success) {
-        throw new Error(result.error || 'Analysis execution failed.');
+      if (!analysisResponse.ok) {
+        const errorText = await analysisResponse.text();
+        console.error('❌ Analysis response error:', errorText);
+        throw new Error(`Analysis failed: ${analysisResponse.status} - ${errorText}`);
       }
       
-      //console.log('Analysis completed:', result);
+      const analysisResult = await analysisResponse.json();
+      
+      console.log('✅ Analysis result received:', {
+        success: analysisResult.success,
+        analysisId: analysisResult.analysisId,
+        hasPivotTables: !!analysisResult.pivotTables,
+        pivotTableKeys: Object.keys(analysisResult.pivotTables || {}),
+        hasHeatmap: !!analysisResult.heatmap
+      });
+      
+      if (!analysisResult.success) {
+        throw new Error(analysisResult.error || 'Analysis execution failed.');
+      }
 
-      setAnalysisResult(result);
+      // 피봇 테이블 데이터 검증 및 정리
+      const validatedPivotTables = {};
+      if (analysisResult.pivotTables && typeof analysisResult.pivotTables === 'object') {
+        Object.entries(analysisResult.pivotTables).forEach(([key, data]) => {
+          if (Array.isArray(data) && data.length > 0) {
+            // 데이터 항목들이 객체인지 확인
+            const validData = data.filter(item => item && typeof item === 'object');
+            if (validData.length > 0) {
+              validatedPivotTables[key] = validData;
+              console.log(`✅ Valid pivot table "${key}": ${validData.length} items`);
+            } else {
+              console.warn(`⚠️ No valid items in pivot table "${key}"`);
+            }
+          } else {
+            console.warn(`⚠️ Invalid pivot table data for "${key}":`, data);
+          }
+        });
+      }
+
+      console.log('📊 Validated pivot tables:', {
+        keys: Object.keys(validatedPivotTables),
+        totalItems: Object.values(validatedPivotTables).reduce((sum, data) => sum + data.length, 0)
+      });
+
+      // 2단계: AI 인사이트 생성 (피봇 테이블이 있는 경우에만)
+      if (Object.keys(validatedPivotTables).length > 0) {
+        console.log('🤖 === STEP 2: GENERATING AI INSIGHTS ===');
+        
+        try {
+          const insightsResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/insights`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-user-id': userId
+            },
+            body: JSON.stringify({
+              analysisId: analysisResult.analysisId,
+              pivotTables: validatedPivotTables
+            })
+          });
+          
+          console.log('📡 Insights response status:', insightsResponse.status);
+          console.log('📡 Insights response headers:', Object.fromEntries(insightsResponse.headers.entries()));
+          
+          if (!insightsResponse.ok) {
+            const errorText = await insightsResponse.text();
+            console.error('❌ Insights response error:', errorText);
+            throw new Error(`Insights generation failed: ${insightsResponse.status} - ${errorText}`);
+          }
+          
+          const insightsResult = await insightsResponse.json();
+          
+          console.log('🤖 Insights result received:', {
+            success: insightsResult.success,
+            hasInsights: !!insightsResult.insights,
+            insightsLength: insightsResult.insights ? insightsResult.insights.length : 0,
+            preview: insightsResult.insights ? insightsResult.insights.substring(0, 100) + '...' : 'No preview'
+          });
+          
+          if (insightsResult.success && insightsResult.insights) {
+            analysisResult.insights = insightsResult.insights;
+            console.log('✅ AI insights successfully added to analysis result');
+          } else {
+            console.warn('⚠️ AI insights generation failed:', insightsResult.error);
+            analysisResult.insights = `# ⚠️ AI 인사이트 생성 실패\n\n${insightsResult.error || '기술적인 문제로 AI 분석을 생성할 수 없었습니다.'}\n\n기본 분석 결과는 정상적으로 생성되었습니다.`;
+          }
+        } catch (insightsError) {
+          console.error('❌ AI insights generation error:', insightsError);
+          analysisResult.insights = `# ⚠️ AI 인사이트 생성 오류\n\n${insightsError.message}\n\n네트워크 연결이나 서버 상태를 확인해주세요. 기본 분석 결과는 정상적으로 생성되었습니다.`;
+        }
+      } else {
+        console.warn('⚠️ No valid pivot tables found, skipping AI insights generation');
+        analysisResult.insights = '# ⚠️ 데이터 부족\n\n유효한 피벗 테이블 데이터가 없어 AI 인사이트를 생성할 수 없습니다. 데이터 형식과 컬럼 매핑을 확인해주세요.';
+      }
+
+      // 최종 결과에 검증된 피봇 테이블 적용
+      analysisResult.pivotTables = validatedPivotTables;
+
+      console.log('📊 Final analysis result:', {
+        analysisId: analysisResult.analysisId,
+        fileName: analysisResult.fileName,
+        hasPivotTables: !!analysisResult.pivotTables,
+        pivotTableKeys: Object.keys(analysisResult.pivotTables || {}),
+        hasInsights: !!analysisResult.insights,
+        insightsLength: analysisResult.insights ? analysisResult.insights.length : 0
+      });
+
+      setAnalysisResult(analysisResult);
       
       // Navigate to the analysis result page
-      if (result.analysisId) {
+      if (analysisResult.analysisId) {
         // Show success state briefly before redirecting
         setTimeout(() => {
-          navigate(`/analysis/${result.analysisId}`, { 
+          navigate(`/analysis/${analysisResult.analysisId}`, { 
             state: { 
-              analysis: result
+              analysis: analysisResult
             }
           });
         }, 1000);
       }
       
     } catch (error) {
-      console.error('Analysis execution failed:', error);
-      setError(error.message);
+      console.error('❌ === ANALYSIS EXECUTION ERROR ===');
+      console.error('❌ Error type:', error.constructor.name);
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error stack:', error.stack);
+      
+      setError(`분석 실행 중 오류가 발생했습니다: ${error.message}`);
       setStep(2);
       setShowMappingModal(true);
     } finally {

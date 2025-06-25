@@ -8,7 +8,7 @@ const fs = require('fs');
 require('dotenv').config();
 const mongoose = require('mongoose');
 const { processDataWithGemini, generateWeeklyReportWithGemini, generateTimeBasedAnalysisWithGemini } = require('./utils/geminiProcessor');
-const { GoogleGenAI } = require("@google/genai");
+const OpenAI = require("openai");
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -76,14 +76,27 @@ connectDB().catch(err => {
   console.error('Failed to connect to MongoDB:', err);
 });
 
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://pivot-dashboard-production.up.railway.app'
+];
+
 // Middleware
 app.use(cors({
-  origin: true, // Allow all origins temporarily for debugging
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization', 'Origin', 'Accept'],
   exposedHeaders: ['Content-Type', 'x-user-id'],
-  maxAge: 86400 // 24 hours
+  maxAge: 86400
 }));
 
 // Add request logging middleware
@@ -188,159 +201,259 @@ const processExcel = (buffer) => {
 
 // Simple AI insights placeholder (if Gemini API not available)
 const generateSimpleInsights = (data) => {
-  if (!data || data.length === 0) {
-    return "No data available for analysis.";
-  }
-
-  const columns = Object.keys(data[0]);
-  const insights = [
-    `Data contains ${data.length} rows and ${columns.length} columns.`,
-    `Columns include: ${columns.slice(0, 5).join(', ')}${columns.length > 5 ? '...' : ''}.`,
-    "Upload successful! Your data is ready for analysis."
-  ];
-
-  return insights.join(' ');
+  return `# 📊 분석 완료\n\n## 요약\n- 데이터 업로드 및 처리가 완료되었습니다\n- 피벗 테이블이 생성되었습니다\n- 추가적인 AI 분석을 위해서는 OpenAI API 키가 필요합니다\n\n## 다음 단계\n1. 생성된 피벗 테이블을 확인하세요\n2. 성과 히트맵을 통해 시각적 분석을 수행하세요\n3. 더 자세한 분석을 원하시면 관리자에게 API 설정을 요청하세요\n\n*더 상세한 AI 분석을 위해 OpenAI API를 설정해주세요.*`;
 };
 
-const MARKETING_ANALYSIS_PROMPT = `You are a performance marketing analyst with expertise in interpreting campaign-level ad data.
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-You will receive marketing performance data in CSV format. The columns will be similar to: 'Date', 'Campaign', 'Ad Set', 'Ad', 'Cost', 'Impression', 'Click', 'Purchase', 'Revenue'. Column names may vary slightly.
-
-Your task is to complete **three structured steps**:
-
----
-
-### 📊 Step 1: Pivot Table Generation (CSV Output)
-
-- Generate **three pivot tables** grouped by:
-  1. Campaign
-  2. Ad Set
-  3. Ad
-
-- For each group, calculate the following metrics:
-  - **Impression**
-  - **CTR** = Click / Impression
-  - **Purchase**
-  - **CVR** = Purchase / Click
-  - **Cost**
-  - **Click**
-  - **CPA** = Cost / Purchase
-  - **Revenue**
-
-- Sort each pivot table **by Impression, CTR, and Purchase in descending order**.
-
-- Return each pivot table using:
-  \`\`\`csv
-  (table)
-  \`\`\`
-
----
-
-### 🌡️ Step 2: Heatmap Visualization (Base64 Encoded Image)
-
-- Create a **heatmap** visualizing performance metrics (CTR, CVR, CPA, Revenue) across campaigns or ad sets.
-- You can use Python (e.g., Matplotlib, Seaborn) to generate the heatmap.
-- Convert the image to base64 and return it using:
-
-\`\`\`image
-data:image/png;base64,...(base64 string)
-\`\`\`
-
-Do **not return the code** — only the base64 image.
-
----
-
-### 📈 Step 3: Insightful Analysis & Recommendations (Marketing Report)
-
-Analyze the performance based on the above data. Structure your response as a marketing report in natural language, including:
-
-#### A. Good / Bad Creative Classification
-- Identify **high CTR but low CVR** ads (good hook but poor conversion).
-- Identify **high CVR with low CTR** (effective but not attractive).
-- Use this to infer strengths and weaknesses of creative assets (copy, image, CTA alignment with landing page).
-
-#### B. Key Insights (3–5 bullet points)
-- Top-performing campaigns, ads, and ad sets
-- Low-performing segments needing attention
-- Patterns in targeting, budget allocation, and creative success
-
-#### C. Actionable Recommendations
-- What should be optimized? (budget reallocation, ad structure, creative)
-- How to address underperformance?
-- Which creative types work best?
-
-Format your response as a JSON object like below:
-
-{
-  "pivotTables": {
-    "campaign": "...",   // CSV block
-    "adSet": "...",      // CSV block
-    "ad": "..."          // CSV block
-  },
-  "heatmap": "...",       // Base64 image block
-  "report": {
-    "creativeAnalysis": "...",
-    "insights": "...",
-    "recommendations": "..."
-  }
-}`;
-
-// Column mapping with Gemini AI
-const generateColumnMapping = async (columns) => {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+// AI 인사이트 생성 함수 (수정된 버전)
+const generateAIInsights = async (pivotTables) => {
+  console.log('🤖 === GENERATE AI INSIGHTS START ===');
+  console.log('🤖 Data available:', pivotTables ? Object.keys(pivotTables) : 'No data');
+  console.log('🤖 Full pivot tables data:', JSON.stringify(pivotTables, null, 2));
   
-  if (!GEMINI_API_KEY) {
-    console.log('No Gemini API key found, using simple mapping');
-    return generateSimpleMapping(columns);
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  
+  if (!OPENAI_API_KEY) {
+    console.log('⚠️ No OpenAI API key found, using simple insights');
+    return generateSimpleInsights([]);
   }
 
   try {
-    const prompt = `
-다음 컬럼명들을 표준 마케팅 데이터 컬럼에 매핑해주세요:
-
-입력 컬럼: ${columns.join(', ')}
-표준 컬럼: Date, Campaign, Ad Set, Ad, Cost, Impression, Click, Purchase, Revenue
-
-각 입력 컬럼을 가장 적절한 표준 컬럼에 매핑하고, 확신도(0-1)를 함께 제공해주세요.
-매핑이 어려운 컬럼은 unmapped에 포함시키고, 애매한 경우 suggestions에 대안을 제공해주세요.
-
-다음 JSON 형태로만 응답해주세요 (다른 텍스트 없이):
-{
-  "mapping": {
-    "사용자컬럼": "표준컬럼"
-  },
-  "confidence": {
-    "사용자컬럼": 0.95
-  },
-  "unmapped": ["매핑되지않은컬럼"],
-  "suggestions": {
-    "애매한컬럼": ["대안1", "대안2"]
-  }
-}
-    `;
-
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: prompt,
-    });
-    const mappingText = response.text;
+    console.log('📝 === PREPARING PROMPT ===');
     
-    if (!mappingText) {
-      throw new Error('No mapping result from Gemini API');
+    // 데이터 검증 및 안전한 처리
+    if (!pivotTables || typeof pivotTables !== 'object') {
+      throw new Error('Invalid pivot tables data');
     }
 
-    // JSON 파싱 시도
-    try {
-      const cleanText = mappingText.replace(/```json\n?|```\n?/g, '').trim();
-      const mappingResult = JSON.parse(cleanText);
-      return mappingResult;
-    } catch (parseError) {
-      console.warn('Failed to parse Gemini mapping result, using fallback');
-      return generateSimpleMapping(columns);
+    // 피봇 테이블 데이터를 더 상세하게 요약
+    const getDetailedTableSummary = (tableData, tableName) => {
+      if (!Array.isArray(tableData) || tableData.length === 0) {
+        return `${tableName}: No data available`;
+      }
+      
+      // 전체 통계 계산
+      const totalImpressions = tableData.reduce((sum, item) => sum + (parseFloat(item.Impression) || 0), 0);
+      const totalClicks = tableData.reduce((sum, item) => sum + (parseFloat(item.Click) || 0), 0);
+      const totalPurchases = tableData.reduce((sum, item) => sum + (parseFloat(item.Purchase) || 0), 0);
+      const totalCost = tableData.reduce((sum, item) => sum + (parseFloat(item.Cost) || 0), 0);
+      const totalRevenue = tableData.reduce((sum, item) => sum + (parseFloat(item.Revenue) || 0), 0);
+      
+      const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions * 100).toFixed(2) : 0;
+      const avgCVR = totalClicks > 0 ? (totalPurchases / totalClicks * 100).toFixed(2) : 0;
+      const avgCPA = totalPurchases > 0 ? (totalCost / totalPurchases).toFixed(2) : 0;
+      const roas = totalCost > 0 ? (totalRevenue / totalCost).toFixed(2) : 0;
+      
+      // 성과 분포 분석
+      const performanceDistribution = tableData.map(item => ({
+        name: item[tableName] || 'Unknown',
+        impressions: parseFloat(item.Impression) || 0,
+        ctr: parseFloat(item.CTR?.replace('%', '')) || 0,
+        cvr: parseFloat(item.CVR?.replace('%', '')) || 0,
+        cpa: parseFloat(item.CPA) || 0,
+        cost: parseFloat(item.Cost) || 0,
+        revenue: parseFloat(item.Revenue) || 0,
+        clicks: parseFloat(item.Click) || 0,
+        purchases: parseFloat(item.Purchase) || 0
+      }));
+
+      return `## ${tableName} Performance Dataset (${tableData.length} entities)
+
+**Aggregate Metrics:**
+- Total Impressions: ${totalImpressions.toLocaleString()}
+- Total Clicks: ${totalClicks.toLocaleString()}
+- Total Conversions: ${totalPurchases.toLocaleString()}
+- Total Cost: $${totalCost.toLocaleString()}
+- Total Revenue: $${totalRevenue.toLocaleString()}
+- Average CTR: ${avgCTR}%
+- Average CVR: ${avgCVR}%
+- Average CPA: $${avgCPA}
+- ROAS: ${roas}
+
+**Individual Performance Data:**
+${performanceDistribution.map(item => 
+  `${item.name}: Impressions ${item.impressions.toLocaleString()}, CTR ${item.ctr}%, CVR ${item.cvr}%, CPA $${item.cpa}, Cost $${item.cost}, Revenue $${item.revenue}`
+).join('\n')}`;
+    };
+
+    // 상세한 데이터 요약 생성
+    let dataContext = '';
+    
+    if (pivotTables.Campaign && Array.isArray(pivotTables.Campaign)) {
+      dataContext += getDetailedTableSummary(pivotTables.Campaign, 'Campaign') + '\n\n';
     }
-  } catch (error) {
-    console.error('Column mapping error:', error);
+    
+    if (pivotTables['Ad Set'] && Array.isArray(pivotTables['Ad Set'])) {
+      dataContext += getDetailedTableSummary(pivotTables['Ad Set'], 'Ad Set') + '\n\n';
+    }
+    
+    if (pivotTables.Ad && Array.isArray(pivotTables.Ad)) {
+      dataContext += getDetailedTableSummary(pivotTables.Ad, 'Ad') + '\n\n';
+    }
+
+    if (!dataContext.trim()) {
+      throw new Error('No valid data found in pivot tables');
+    }
+
+    const prompt = `You are a Senior Digital Marketing Analyst with 15+ years of experience in performance marketing and data analytics, similar to analysts at enterprise consulting firms like IBM, Microsoft, Oracle, and Salesforce. 
+
+Your task is to analyze the following advertising performance data and provide a comprehensive, enterprise-grade analysis report that demonstrates deep marketing expertise and strategic thinking.
+
+# 📊 CAMPAIGN PERFORMANCE DATA
+
+${dataContext}
+
+# 🎯 ANALYSIS REQUIREMENTS
+
+Create a professional marketing analysis report in **English** with the following structure:
+
+## Executive Summary
+- Brief overview of overall account performance vs industry benchmarks
+- Key findings and strategic recommendations (2-3 sentences maximum)
+
+## Performance Analysis Framework
+
+### Funnel Efficiency Assessment
+Analyze the marketing funnel performance using the following framework:
+- **Awareness Stage** (Impressions & Reach): Volume adequacy and audience targeting effectiveness
+- **Interest Stage** (CTR): Creative resonance and audience-message fit
+- **Consideration Stage** (CVR): Landing page alignment and offer compelling factor
+- **Conversion Stage** (CPA & ROAS): Economic efficiency and scalability
+
+### Creative Performance Categorization
+Based on performance patterns, categorize ads/campaigns into:
+
+**High-Performing Assets:**
+- Strong volume + High CTR + High CVR = Winning combination (scale immediately)
+- High volume + High CTR + Low CVR = Strong hook, poor landing alignment (fix landing page)
+- Low volume + High CTR + High CVR = Audience too narrow (expand targeting)
+
+**Underperforming Assets:**
+- High volume + Low CTR + Any CVR = Poor creative-audience fit (refresh creative)
+- Any volume + High CTR + Low CVR = Landing page disconnect (optimize post-click experience)
+- Low volume + Low CTR + Low CVR = Fundamental mismatch (pause and redesign)
+
+## Strategic Optimization Framework
+
+### Immediate Actions (Week 1-2)
+Specific tactical moves with expected impact:
+- Budget reallocation priorities with percentage shifts
+- Creative refresh requirements with reasoning
+- Targeting adjustments with rationale
+
+### Performance Enhancement (Month 1-3)
+Strategic initiatives with measurable outcomes:
+- Funnel optimization priorities
+- Testing roadmap for improvement
+- Scaling opportunities identification
+
+### Portfolio Optimization
+Advanced strategic recommendations:
+- Resource allocation across campaigns/ad sets
+- Performance pattern exploitation
+- Risk mitigation for underperformers
+
+## Data-Driven Insights
+
+### Pattern Recognition
+- Performance correlations discovered in the data
+- Unexpected findings that require investigation
+- Seasonal/temporal patterns if applicable
+
+### Competitive Intelligence
+- Performance vs typical industry benchmarks
+- Efficiency gaps and improvement potential
+- Market positioning implications
+
+**IMPORTANT GUIDELINES:**
+- Write in a consultative, professional tone appropriate for C-level executives
+- Use specific metrics and data points to support every recommendation
+- Provide clear, actionable next steps with expected business impact
+- Focus on strategic insights rather than basic data summaries
+- Limit bullet points - use analytical prose that demonstrates expertise
+- Include numerical evidence for all claims and recommendations`;
+
+    console.log('📝 Prompt length:', prompt.length);
+    console.log('📝 Data context preview:', dataContext.substring(0, 500) + '...');
+
+    console.log('🚀 === CALLING OPENAI API ===');
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a Senior Digital Marketing Analyst with 15+ years of experience at top-tier consulting firms. You specialize in performance marketing analysis and strategic optimization. Your analysis style is sophisticated, data-driven, and actionable - similar to reports produced by IBM, Microsoft, Oracle, and Salesforce marketing consulting divisions. Always write in professional English with strategic depth and specific, measurable recommendations."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 3000,
+      temperature: 0.6,
+    });
+    
+    console.log('✅ === OPENAI API RESPONSE RECEIVED ===');
+    
+    if (!completion.choices || completion.choices.length === 0) {
+      console.error('❌ No choices in OpenAI response');
+      throw new Error('OpenAI API returned no choices');
+    }
+
+    const response = completion.choices[0];
+    const aiResponse = response.message?.content;
+    
+    console.log('✅ AI Response length:', aiResponse ? aiResponse.length : 0);
+    console.log('✅ AI Response preview:', aiResponse ? aiResponse.substring(0, 200) + '...' : 'No response');
+    
+    // 응답 검증
+    if (!aiResponse || typeof aiResponse !== 'string' || aiResponse.length < 200) {
+      console.error('❌ Invalid AI response:', aiResponse);
+      throw new Error('Invalid or too short response from OpenAI');
+    }
+    
+    console.log('✅ AI Insights generated successfully');
+    return aiResponse;
+    
+  } catch (err) {
+    console.error('❌ OpenAI API error:', {
+      message: err.message,
+      status: err.status,
+      code: err.code
+    });
+    
+    // 구체적인 에러 메시지 반환
+    if (err.status === 401) {
+      return '# ⚠️ API Authentication Error\n\nOpenAI API key is invalid. Please contact administrator.';
+    } else if (err.status === 429) {
+      return '# ⚠️ API Rate Limit Exceeded\n\nAPI usage limit exceeded. Please try again later.';
+    } else if (err.status === 500) {
+      return '# ⚠️ API Server Error\n\nOpenAI server is temporarily unavailable. Please try again later.';
+    } else {
+      return `# ⚠️ Analysis Report Generation Failed\n\nTechnical issue prevented AI analysis generation.\n\nError: ${err.message}\n\nPlease analyze the pivot tables manually.`;
+    }
+  }
+};
+
+// Column mapping with OpenAI
+const generateColumnMapping = async (columns) => {
+  if (!process.env.OPENAI_API_KEY) {
+    return generateSimpleMapping(columns);
+  }
+  const prompt = `다음 컬럼명들을 표준 마케팅 데이터 컬럼에 매핑해주세요:\n\n입력 컬럼: ${columns.join(', ')}\n표준 컬럼: Date, Campaign, Ad Set, Ad, Cost, Impression, Click, Purchase, Revenue\n\n각 입력 컬럼을 가장 적절한 표준 컬럼에 매핑하고, 확신도(0-1)를 함께 제공해주세요.\n매핑이 어려운 컬럼은 unmapped에 포함시키고, 애매한 경우 suggestions에 대안을 제공해주세요.\n\n다음 JSON 형태로만 응답해주세요 (다른 텍스트 없이):\n{\n  "mapping": {\n    "사용자컬럼": "표준컬럼"\n  },\n  "confidence": {\n    "사용자컬럼": 0.95\n  },\n  "unmapped": ["매핑되지않은컬럼"],\n  "suggestions": {\n    "애매한컬럼": ["대안1", "대안2"]\n  }\n}`;
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{ role: "user", content: prompt }],
+    max_tokens: 1024,
+    temperature: 0.3,
+  });
+  const mappingText = completion.choices[0].message.content;
+  try {
+    const cleanText = mappingText.replace(/```json\n?|```\n?/g, '').trim();
+    const mappingResult = JSON.parse(cleanText);
+    return mappingResult;
+  } catch (parseError) {
     return generateSimpleMapping(columns);
   }
 };
@@ -484,68 +597,6 @@ const generateSimpleHeatmap = (pivotData) => {
   `).toString('base64');
 };
 
-// Gemini AI integration (with fallback)
-const generateAIInsights = async (data, analysisType = 'general') => {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-  
-  console.log('Gemini API Key status:', GEMINI_API_KEY ? 'Present' : 'Missing');
-  
-  if (!GEMINI_API_KEY) {
-    console.log('No Gemini API key found, using simple insights');
-    return generateSimpleInsights(data);
-  }
-
-  try {
-    // Prepare data summary for AI analysis
-    const dataSummary = {
-      totalRows: data.length,
-      columns: Object.keys(data[0] || {}),
-      data: data
-    };
-
-    // 데이터를 문자열로 변환
-    const dataStr = data.map(row => 
-      Object.entries(row)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(', ')
-    ).join('\n');
-
-    const prompt = `${MARKETING_ANALYSIS_PROMPT}
-
-Data Summary:
-- Total rows: ${dataSummary.totalRows}
-- Columns: ${dataSummary.columns.join(', ')}
-
-Complete Data:
-${dataStr}`;
-
-    console.log('Sending request to Gemini API with data length:', data.length);
-
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-    let geminiResponseText = '';
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: prompt,
-      });
-      geminiResponseText = response.text;
-      console.log('✅ Gemini 1.5-flash response:', geminiResponseText.substring(0, 200) + '...');
-    } catch (err) {
-      console.error('❌ Gemini 1.5-flash API error:', err);
-      throw new Error('Gemini 1.5-flash API error: ' + err.message);
-    }
-
-    if (!geminiResponseText) {
-      throw new Error('No response generated from Gemini 1.5-flash API');
-    }
-
-    return geminiResponseText;
-  } catch (error) {
-    console.error('AI Insights Error:', error);
-    return generateSimpleInsights(data);
-  }
-};
-
 // API Routes
 
 // In-memory storage for file data (temporary)
@@ -664,37 +715,64 @@ app.post('/api/mapping/suggest', async (req, res) => {
   }
 });
 
-// 3. 분석 실행 API
+// 3. 분석 실행 API (피벗테이블, 히트맵만 생성)
 app.post('/api/analysis/execute', async (req, res) => {
+  console.log('🎯 === ANALYSIS EXECUTE API HIT ===');
+  console.log('🎯 Route: /api/analysis/execute');
+  console.log('🎯 Method:', req.method);
+  console.log('🎯 Headers:', {
+    'x-user-id': req.headers['x-user-id'],
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length']
+  });
+  
   try {
     const userId = req.headers['x-user-id'];
     const { fileId, columnMapping } = req.body;
     
+    console.log('📥 === REQUEST BODY PARSED ===');
+    console.log('👤 User ID:', userId);
+    console.log('📁 File ID:', fileId);
+    console.log('🗺️ Column Mapping:', columnMapping);
+    
     if (!userId) {
+      console.error('❌ No user ID provided');
       return res.status(401).json({ 
-        success: false,
+        success: false, 
         error: 'Authentication required' 
       });
     }
-
+    
     if (!fileId || !columnMapping) {
+      console.error('❌ Missing required parameters');
+      console.error('❌ fileId:', fileId);
+      console.error('❌ columnMapping:', columnMapping);
       return res.status(400).json({ 
-        success: false,
+        success: false, 
         error: 'Missing fileId or columnMapping' 
       });
     }
-
+    
     // 파일 데이터 조회
+    console.log('📁 === FETCHING FILE DATA ===');
     const fileData = fileStorage.get(fileId);
     if (!fileData) {
+      console.error('❌ File data not found for fileId:', fileId);
+      console.error('❌ Available fileIds:', Array.from(fileStorage.keys()));
       return res.status(404).json({ 
-        success: false,
+        success: false, 
         error: 'File data not found or expired' 
       });
     }
-
-    console.log('Executing analysis for file:', fileData.metadata.fileName);
-
+    
+    console.log('✅ File data found:', {
+      fileName: fileData.metadata.fileName,
+      fileSize: fileData.metadata.fileSize,
+      rowCount: fileData.data.length,
+      columnCount: fileData.data[0] ? Object.keys(fileData.data[0]).length : 0
+    });
+    
+    console.log('📊 === STEP 1: GENERATING PIVOT TABLES ===');
     // 1단계: 피벗 테이블 생성
     const pivotTables = generatePivotTables(fileData.data, columnMapping);
     console.log('📊 Generated pivotTables:', {
@@ -705,67 +783,22 @@ app.post('/api/analysis/execute', async (req, res) => {
       adCount: pivotTables?.Ad?.length || 0
     });
     
+    console.log('🖼️ === STEP 2: GENERATING HEATMAP ===');
     // 2단계: 히트맵 생성 (단순 버전)
     const heatmap = generateSimpleHeatmap(pivotTables.Campaign || []);
+    console.log('🖼️ Heatmap generated:', {
+      hasHeatmap: !!heatmap,
+      heatmapLength: heatmap ? heatmap.length : 0
+    });
     
-    // 3단계: Gemini API로 리포트 생성
-    const reportPrompt = `
-다음 피벗 테이블 데이터를 분석하여 마케팅 성과 리포트를 작성해주세요:
-
-Campaign 레벨 데이터:
-${JSON.stringify(pivotTables.Campaign, null, 2)}
-
-Ad Set 레벨 데이터:
-${JSON.stringify(pivotTables['Ad Set'], null, 2)}
-
-Ad 레벨 데이터:
-${JSON.stringify(pivotTables.Ad, null, 2)}
-
-다음 구조로 분석해주세요:
-
-## 📊 전체 성과 요약
-- 총 캠페인 수, 노출수, 클릭수, 전환수 등 핵심 지표 요약
-
-## 🎯 크리에이티브 분석
-- CTR이 높지만 CVR이 낮은 광고 (관심 유발은 되지만 전환이 어려운 광고)
-- CTR은 낮지만 CVR이 높은 광고 (타겟팅이 정확한 광고)
-- 전반적인 크리에이티브 품질 평가
-
-## 💡 핵심 인사이트 (3-5개)
-- 가장 성과가 좋은 캠페인/광고세트/광고
-- 개선이 필요한 부분
-- 예산 배분이나 타겟팅 관련 패턴
-
-## 🚀 실행 가능한 개선 방안
-- 구체적인 액션 아이템들
-- 예산 재배분 제안
-- 크리에이티브 최적화 방향
-
-한국어로 작성해주세요.
-    `;
-    
-    // 3단계: Gemini API로 리포트 생성
-    let insights;
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    
-    if (GEMINI_API_KEY) {
-      try {
-        insights = await generateAIInsights(fileData.data, 'general');
-      } catch (error) {
-        console.error('Gemini API error:', error);
-        insights = '리포트 생성에 실패했습니다.';
-      }
-    } else {
-      insights = `# 📊 분석 완료\n\n캠페인 ${pivotTables.Campaign?.length || 0}개, 광고세트 ${pivotTables['Ad Set']?.length || 0}개, 광고 ${pivotTables.Ad?.length || 0}개를 분석했습니다.\n\n더 자세한 분석을 위해 Gemini API 키를 설정해주세요.`;
-    }
-    
-    // 4단계: 결과 저장 (MongoDB)
+    // 3단계: 결과 저장 (MongoDB) - AI 인사이트는 별도 API에서 생성
     let analysisDoc;
     if (Analysis && mongoose.connection.readyState === 1) {
       try {
-        console.log('Creating analysis document...');
+        console.log('📊 Creating analysis document...');
         console.log('📊 pivotTables structure:', JSON.stringify(pivotTables, null, 2));
         console.log('📅 Setting createdAt to:', new Date());
+        
         analysisDoc = new Analysis({
           userId,
           fileName: fileData.metadata.fileName,
@@ -774,7 +807,7 @@ ${JSON.stringify(pivotTables.Ad, null, 2)}
           updatedAt: new Date(),
           rawData: fileData.data,
           pivotData: pivotTables || {},
-          insights,
+          insights: '', // AI 인사이트는 별도 API에서 생성
           status: 'completed',
           metadata: {
             rowCount: fileData.data.length,
@@ -783,14 +816,15 @@ ${JSON.stringify(pivotTables.Ad, null, 2)}
             processedAt: new Date().toISOString()
           }
         });
-
-        console.log('Saving analysis to database...');
+        
+        console.log('💾 Saving analysis to database...');
         await analysisDoc.save();
         console.log('✅ Analysis saved to database with ID:', analysisDoc._id);
         console.log('📅 Final createdAt value:', analysisDoc.createdAt);
       } catch (error) {
         console.error('❌ Database save failed:', error);
-        // 데이터베이스 저장 실패 시에도 응답은 반환하되, 경고 추가
+        console.error('❌ Error details:', error.message);
+        console.error('❌ Error stack:', error.stack);
         console.warn('Analysis will be returned without database persistence');
       }
     } else {
@@ -798,28 +832,195 @@ ${JSON.stringify(pivotTables.Ad, null, 2)}
       console.log('MongoDB connection state:', mongoose.connection.readyState);
       console.log('Analysis model available:', !!Analysis);
     }
-
+    
+    console.log('🧹 === CLEANING UP ===');
     // 임시 파일 데이터 정리
     fileStorage.delete(fileId);
-
-    res.json({
+    console.log('✅ File data cleaned up');
+    
+    console.log('📤 === SENDING RESPONSE ===');
+    const response = {
       success: true,
       analysisId: analysisDoc?._id || `temp_${Date.now()}`,
       fileName: fileData.metadata.fileName,
       pivotTables,
       heatmap,
-      insights,
+      insights: '', // AI 인사이트는 별도 API에서 생성
+      createdAt: analysisDoc?.createdAt || new Date(),
       metadata: {
         rowCount: fileData.data.length,
         columnMapping,
         processedAt: new Date().toISOString()
       }
+    };
+    
+    console.log('📤 Response structure:', {
+      success: response.success,
+      analysisId: response.analysisId,
+      fileName: response.fileName,
+      hasPivotTables: !!response.pivotTables,
+      hasHeatmap: !!response.heatmap,
+      hasInsights: !!response.insights,
+      insightsLength: response.insights ? response.insights.length : 0
     });
+    
+    res.json(response);
+    console.log('✅ Analysis execution completed successfully');
   } catch (error) {
-    console.error('Analysis execution error:', error);
+    console.error('❌ === ANALYSIS EXECUTION ERROR ===');
+    console.error('❌ Error type:', error.constructor.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Full error object:', error);
+    
     res.status(500).json({ 
       success: false,
       error: 'Failed to execute analysis',
+      details: error.message 
+    });
+  }
+});
+
+// 4. AI 인사이트 생성 API (개선된 버전)
+app.post('/api/analysis/insights', async (req, res) => {
+  console.log('🤖 === AI INSIGHTS API HIT ===');
+  console.log('🤖 Route: /api/analysis/insights');
+  console.log('🤖 Method:', req.method);
+  console.log('🤖 Headers:', {
+    'x-user-id': req.headers['x-user-id'],
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length']
+  });
+  
+  try {
+    const userId = req.headers['x-user-id'];
+    const { analysisId, pivotTables } = req.body;
+    
+    console.log('📥 === REQUEST BODY PARSED ===');
+    console.log('👤 User ID:', userId);
+    console.log('📊 Analysis ID:', analysisId);
+    console.log('📊 PivotTables received:', pivotTables ? 'Yes' : 'No');
+    console.log('📊 PivotTables keys:', pivotTables ? Object.keys(pivotTables) : 'N/A');
+    
+    // 데이터 구조 상세 로깅
+    if (pivotTables) {
+      Object.entries(pivotTables).forEach(([key, value]) => {
+        console.log(`📊 ${key}:`, {
+          type: typeof value,
+          isArray: Array.isArray(value),
+          length: Array.isArray(value) ? value.length : 'N/A',
+          sample: Array.isArray(value) && value.length > 0 ? value[0] : value
+        });
+      });
+    }
+    
+    if (!userId) {
+      console.error('❌ No user ID provided');
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Authentication required' 
+      });
+    }
+    
+    if (!analysisId) {
+      console.error('❌ No analysis ID provided');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Analysis ID is required' 
+      });
+    }
+    
+    if (!pivotTables || typeof pivotTables !== 'object') {
+      console.error('❌ Invalid pivot tables data:', pivotTables);
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Valid pivot tables data is required' 
+      });
+    }
+    
+    // 유효한 데이터가 있는지 확인
+    const hasValidData = Object.values(pivotTables).some(data => 
+      Array.isArray(data) && data.length > 0
+    );
+    
+    if (!hasValidData) {
+      console.error('❌ No valid data in pivot tables');
+      return res.status(400).json({ 
+        success: false, 
+        error: 'No valid data found in pivot tables' 
+      });
+    }
+    
+    console.log('🤖 === GENERATING AI INSIGHTS ===');
+    const insights = await generateAIInsights(pivotTables);
+    
+    console.log('✅ AI Insights generated:', {
+      type: typeof insights,
+      length: insights ? insights.length : 0,
+      isString: typeof insights === 'string',
+      preview: insights ? insights.substring(0, 100) + '...' : 'No insights',
+      hasMarkdown: insights ? insights.includes('#') : false
+    });
+    
+    // 데이터베이스에 인사이트 저장
+    if (Analysis && mongoose.connection.readyState === 1) {
+      try {
+        console.log('💾 Saving insights to database...');
+        const updateResult = await Analysis.findOneAndUpdate(
+          { _id: analysisId, userId },
+          { 
+            insights,
+            updatedAt: new Date()
+          },
+          { new: true }
+        );
+        
+        if (updateResult) {
+          console.log('✅ Insights saved to database');
+        } else {
+          console.warn('⚠️ Analysis not found for update, but continuing...');
+        }
+      } catch (error) {
+        console.error('❌ Failed to save insights to database:', error);
+        console.warn('Insights will be returned without database persistence');
+      }
+    } else {
+      console.warn('⚠️ Database not available. Insights will not be persisted.');
+    }
+    
+    console.log('📤 === SENDING INSIGHTS RESPONSE ===');
+    const response = {
+      success: true,
+      analysisId,
+      insights,
+      generatedAt: new Date().toISOString(),
+      metadata: {
+        dataKeys: Object.keys(pivotTables),
+        totalItems: Object.values(pivotTables).reduce((sum, data) => 
+          sum + (Array.isArray(data) ? data.length : 0), 0
+        )
+      }
+    };
+    
+    console.log('📤 Insights response structure:', {
+      success: response.success,
+      analysisId: response.analysisId,
+      hasInsights: !!response.insights,
+      insightsLength: response.insights ? response.insights.length : 0,
+      totalItems: response.metadata.totalItems
+    });
+    
+    res.json(response);
+    console.log('✅ AI Insights generation completed successfully');
+  } catch (error) {
+    console.error('❌ === AI INSIGHTS GENERATION ERROR ===');
+    console.error('❌ Error type:', error.constructor.name);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to generate AI insights',
       details: error.message 
     });
   }
@@ -963,7 +1164,7 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
     }
 
     // 3. Generate insights
-    const insights = await generateAIInsights(rawData, 'general');
+    const insights = await generateAIInsights(pivotData);
 
     // 4. Save to MongoDB (if available)
     let analysisDoc;
@@ -1458,199 +1659,68 @@ app.use('/api/chat/*', (req, res, next) => {
   next();
 });
 
-// Send message to Gemini AI
+// Send message to OpenAI
 app.post('/api/chat/send', async (req, res) => {
-  console.log('🎯 === CHAT SEND API HIT ===');
-  console.log('🎯 Route: /api/chat/send');
-  console.log('🎯 Method:', req.method);
-  console.log('🎯 Headers:', {
-    'x-user-id': req.headers['x-user-id'],
-    'content-type': req.headers['content-type'],
-    'content-length': req.headers['content-length']
-  });
-  
   try {
     const userId = req.headers['x-user-id'];
     const { message, contexts, analysisData, chatHistory } = req.body;
-    
-    console.log('📥 === REQUEST BODY PARSED ===');
-    console.log('👤 User ID:', userId);
-    console.log('📝 Message length:', message ? message.length : 0);
-    console.log('📝 Message preview:', message ? message.substring(0, 100) + '...' : 'No message');
-    console.log('🔗 Contexts count:', contexts ? contexts.length : 0);
-    console.log('📊 Has analysis data:', !!analysisData);
-    console.log('💬 Chat history count:', chatHistory ? chatHistory.length : 0);
-    
     if (!userId) {
-      console.error('❌ No user ID provided');
-      return res.status(401).json({ 
-        success: false, 
-        error: 'User ID is required' 
-      });
+      return res.status(401).json({ success: false, error: 'User ID is required' });
     }
-
     if (!message || typeof message !== 'string') {
-      console.error('❌ Invalid message format');
-      return res.status(400).json({
-        success: false,
-        error: 'Message is required'
-      });
+      return res.status(400).json({ success: false, error: 'Message is required' });
     }
-
-    console.log('🤖 === PROCESSING CHAT MESSAGE ===');
-    console.log('🤖 Processing for user:', userId);
-    console.log('🤖 Message length:', message.length);
-    console.log('🤖 Context count:', contexts ? contexts.length : 0);
-    console.log('🤖 Has analysis data:', !!analysisData);
-    console.log('🤖 Chat history length:', chatHistory ? chatHistory.length : 0);
-
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-    
-    console.log('🔑 === GEMINI API KEY CHECK ===');
-    console.log('🔑 API Key present:', !!GEMINI_API_KEY);
-    console.log('🔑 API Key length:', GEMINI_API_KEY ? GEMINI_API_KEY.length : 0);
-    console.log('🔑 API Key preview:', GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'No key');
-    
-    if (!GEMINI_API_KEY) {
-      console.log('❌ No Gemini API key found, using fallback response');
+    if (!process.env.OPENAI_API_KEY) {
       return res.json({
         success: true,
-        response: "I'm sorry, but I need a valid API key to provide intelligent responses. Please check your configuration and try again."
+        response: "I'm sorry, but I need a valid OpenAI API key to provide intelligent responses. Please check your configuration and try again."
       });
     }
-
-    console.log('📝 === BUILDING PROMPT ===');
-    
-    // Build context for Gemini
+    // Build prompt
     let fullPrompt = `You are an AI assistant specialized in marketing data analysis. You have access to campaign performance data and should provide helpful insights, answer questions, and make recommendations based on the data provided.\n\nUser's question: ${message}\n\n`;
-
-    console.log('📝 Base prompt length:', fullPrompt.length);
-
-    // Add analysis context if provided
     if (analysisData) {
-      console.log('📊 Adding analysis context...');
       fullPrompt += `\nAnalysis Context:\n- File: ${analysisData.fileName || 'Unknown'}\n- Total rows: ${analysisData.metadata?.rowCount || 'Unknown'}\n- Created: ${analysisData.createdAt ? new Date(analysisData.createdAt).toLocaleDateString() : 'Unknown'}\n\n`;
-      console.log('📊 Analysis context added');
     }
-
-    // Add specific data contexts if selected
     if (contexts && contexts.length > 0) {
-      console.log('🔗 === ADDING CONTEXT DATA ===');
       fullPrompt += `\nSpecific Data Context:\n`;
-      
-      contexts.forEach((context, index) => {
-        console.log(`🔗 Context ${index + 1}: ${context.name} (${context.type})`);
+      contexts.forEach((context) => {
         fullPrompt += `\n${context.name}:\n`;
-        
         if (context.type === 'data' || context.type === 'pivot') {
-          // Limit data size for API call
-          const limitedData = Array.isArray(context.data) 
-            ? context.data.slice(0, 20)
-            : context.data;
-          console.log(`  📊 Data type: ${context.type}, Limited to 20 items`);
+          const limitedData = Array.isArray(context.data) ? context.data.slice(0, 20) : context.data;
           fullPrompt += JSON.stringify(limitedData, null, 2);
         } else if (context.type === 'report') {
-          console.log(`  📄 Report data length: ${context.data ? context.data.length : 0}`);
           fullPrompt += context.data;
         } else if (context.type === 'visualization') {
-          console.log(`  🖼️ Visualization type detected`);
-          // Check if this is a heatmap with base64 image data
-          if (Array.isArray(context.data) && context.data.length > 0 && 
-              typeof context.data[0] === 'string' && context.data[0].startsWith('data:image')) {
-            console.log(`  🔥 Heatmap image detected`);
+          if (Array.isArray(context.data) && context.data.length > 0 && typeof context.data[0] === 'string' && context.data[0].startsWith('data:image')) {
             fullPrompt += `Heatmap visualization image (base64 encoded):\n`;
             fullPrompt += `![Performance Heatmap](${context.data[0]})\n`;
             fullPrompt += `This is a visual representation of campaign performance metrics. Please analyze this heatmap image and provide insights about the performance patterns shown.`;
           } else {
-            console.log(`  📊 Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`);
             fullPrompt += `Heatmap data with ${Array.isArray(context.data) ? context.data.length : 0} campaigns`;
           }
         }
         fullPrompt += '\n';
       });
-      console.log('🔗 Context data added to prompt');
     }
-
-    // Add recent chat history for context
     if (chatHistory && chatHistory.length > 0) {
-      console.log('💬 Adding chat history...');
       fullPrompt += `\nRecent conversation history:\n`;
-      chatHistory.forEach((msg, index) => {
-        console.log(`  💬 Message ${index + 1}: ${msg.type} - ${msg.content.substring(0, 50)}...`);
+      chatHistory.forEach((msg) => {
         fullPrompt += `${msg.type === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
       });
-      console.log('💬 Chat history added');
     }
-
-    console.log('📝 Final prompt length:', fullPrompt.length);
-
-    // Check if we have any heatmap images in contexts
-    const heatmapImages = [];
-    if (contexts && contexts.length > 0) {
-      console.log('🖼️ === CHECKING FOR HEATMAP IMAGES ===');
-      contexts.forEach((context, index) => {
-        if (context.type === 'visualization' && 
-            Array.isArray(context.data) && 
-            context.data.length > 0 && 
-            typeof context.data[0] === 'string' && 
-            context.data[0].startsWith('data:image')) {
-          heatmapImages.push(context.data[0]);
-          console.log(`🔥 Heatmap image ${index + 1} detected in context:`, {
-            contextName: context.name,
-            imageDataLength: context.data[0].length,
-            imageDataPreview: context.data[0].substring(0, 100) + '...'
-          });
-        }
-      });
-    }
-
-    console.log('🖼️ Total heatmap images found:', heatmapImages.length);
-
-    // If we have heatmap images, update the prompt to mention image analysis
-    if (heatmapImages.length > 0) {
-      console.log('🖼️ Adding heatmap analysis instructions...');
-      fullPrompt += `\n\nIMPORTANT: You have been provided with a heatmap visualization image showing campaign performance metrics. Please analyze this image and provide insights about:\n- Performance patterns visible in the heatmap\n- Which campaigns/ads are performing well (darker green areas)\n- Which campaigns/ads need attention (darker red areas)\n- Overall performance distribution and trends\n- Specific recommendations based on the visual patterns you observe\n\nPlease reference the heatmap image in your analysis and provide specific insights about what you can see in the visualization.`;
-    }
-
     fullPrompt += `\nPlease provide a helpful, accurate response based on the data and context provided. Use markdown formatting for better readability. Focus on actionable insights and specific recommendations when possible.`;
-
-    console.log('📤 === PREPARING GEMINI API REQUEST ===');
-    console.log('📤 Final prompt length:', fullPrompt.length);
-    console.log('📤 Heatmap images count:', heatmapImages.length);
-
-    // Prepare request parts (for Gemini 1.5 SDK)
-    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-    let geminiResponseText = '';
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-1.5-flash",
-        contents: fullPrompt,
-      });
-      geminiResponseText = response.text;
-      console.log('✅ Gemini 1.5-flash response:', geminiResponseText.substring(0, 200) + '...');
-    } catch (err) {
-      console.error('❌ Gemini 1.5-flash API error:', err);
-      throw new Error('Gemini 1.5-flash API error: ' + err.message);
-    }
-
-    if (!geminiResponseText) {
-      throw new Error('No response generated from Gemini 1.5-flash API');
-    }
-
-    console.log('📤 === SENDING RESPONSE TO CLIENT ===');
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: fullPrompt }],
+      max_tokens: 1024,
+      temperature: 0.7,
+    });
+    const aiResponse = completion.choices[0].message.content;
     res.json({
       success: true,
-      response: geminiResponseText
+      response: aiResponse
     });
-    console.log('✅ Response sent to client successfully');
-    
   } catch (error) {
-    console.error('❌ === CHAT API ERROR ===');
-    console.error('❌ Error type:', error.constructor.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
-    console.error('❌ Full error object:', error);
-    
     res.status(500).json({
       success: false,
       error: 'Failed to process chat message',
@@ -1871,9 +1941,65 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Marketing Analyzer Backend running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔑 Gemini API: ${process.env.GEMINI_API_KEY ? 'Configured' : 'Missing (using fallback)'}`);
+  console.log(`🔑 OpenAI API: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Missing (using fallback)'}`);
   console.log(`📁 Max file size: ${process.env.MAX_FILE_SIZE || '10MB'}`);
   console.log(`🗄️ Database: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Not connected'}`);
+});
+
+// OpenAI API 테스트 엔드포인트
+app.post('/api/test-openai', async (req, res) => {
+  console.log('🧪 === OPENAI API TEST ===');
+  
+  try {
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    
+    if (!OPENAI_API_KEY) {
+      return res.status(400).json({
+        success: false,
+        error: 'OpenAI API key not configured'
+      });
+    }
+    
+    console.log('🔑 Testing OpenAI API with key:', OPENAI_API_KEY.substring(0, 7) + '...');
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant. Please respond with a simple test message."
+        },
+        {
+          role: "user",
+          content: "Hello, this is a test. Please respond with 'OpenAI API is working correctly' in Korean."
+        }
+      ],
+      max_tokens: 100,
+      temperature: 0.7,
+    });
+    
+    const response = completion.choices[0].message.content;
+    
+    console.log('✅ OpenAI API test successful:', response);
+    
+    res.json({
+      success: true,
+      message: 'OpenAI API is working correctly',
+      response: response,
+      model: 'gpt-4o',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ OpenAI API test failed:', error);
+    
+    res.status(500).json({
+      success: false,
+      error: 'OpenAI API test failed',
+      details: error.message,
+      status: error.status,
+      code: error.code
+    });
+  }
 });
 
 module.exports = app;
