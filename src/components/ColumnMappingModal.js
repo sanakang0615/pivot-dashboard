@@ -67,12 +67,12 @@ const ColumnMappingModal = ({
       <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800">컬럼 매핑 확인</h2>
-          <button 
+          {/* <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl"
           >
             ×
-          </button>
+          </button> */}
         </div>
         
         <div className="mb-6">
