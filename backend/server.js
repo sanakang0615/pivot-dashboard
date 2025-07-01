@@ -202,6 +202,83 @@ const processExcel = (buffer) => {
   }
 };
 
+// Parquet 파일 읽기 함수
+const readParquetDataset = async (datasetId) => {
+  try {
+    console.log(`📊 Reading parquet dataset: ${datasetId}`);
+    
+    // Dataset configuration
+    const datasetConfigs = {
+      'campaign_data': {
+        name: 'Campaign Data',
+        file: path.join(__dirname, 'data/campaign_data.parquet')
+      },
+      'adpack_data': {
+        name: 'AdPack Data',
+        file: path.join(__dirname, 'data/adpack_data.parquet')
+      }
+    };
+
+    const config = datasetConfigs[datasetId];
+    if (!config) {
+      throw new Error(`Invalid dataset ID: ${datasetId}`);
+    }
+
+    // Check if file exists
+    if (!fs.existsSync(config.file)) {
+      throw new Error(`Dataset file not found: ${config.file}`);
+    }
+
+    console.log(`📁 Reading parquet file: ${config.file}`);
+
+    // DuckDB를 사용하여 parquet 파일 읽기
+    const db = new duckdb.Database(':memory:');
+    const con = db.connect();
+    
+    // DuckDB는 파일 경로를 직접 쿼리할 수 있음
+    const query = `SELECT * FROM read_parquet('${config.file.replace(/'/g, "''")}')`;
+    console.log(`🔍 Executing query: ${query}`);
+    
+    const result = await new Promise((resolve, reject) => {
+      con.all(query, (err, res) => {
+        if (err) {
+          console.error('❌ DuckDB query error:', err);
+          reject(err);
+        } else {
+          console.log(`✅ DuckDB query successful, returned ${res.length} rows`);
+          resolve(res);
+        }
+      });
+    });
+
+    // BigInt 값을 일반 숫자로 변환
+    const rows = convertBigInts(result);
+    const columns = rows[0] ? Object.keys(rows[0]) : [];
+
+    console.log(`📊 Dataset loaded successfully:`, {
+      datasetId,
+      fileName: config.name,
+      rowCount: rows.length,
+      columnCount: columns.length,
+      columns: columns
+    });
+
+    con.close();
+    db.close();
+
+    return {
+      rows,
+      columns,
+      datasetId,
+      fileName: config.name
+    };
+
+  } catch (error) {
+    console.error(`❌ Error reading parquet dataset ${datasetId}:`, error);
+    throw error;
+  }
+};
+
 // Simple AI insights placeholder (if Gemini API not available)
 const generateSimpleInsights = (data) => {
   return `# 📊 분석 완료\n\n## 요약\n- 데이터 업로드 및 처리가 완료되었습니다\n- 피벗 테이블이 생성되었습니다\n- 추가적인 AI 분석을 위해서는 OpenAI API 키가 필요합니다\n\n## 다음 단계\n1. 생성된 피벗 테이블을 확인하세요\n2. 성과 히트맵을 통해 시각적 분석을 수행하세요\n3. 더 자세한 분석을 원하시면 관리자에게 API 설정을 요청하세요\n\n*더 상세한 AI 분석을 위해 OpenAI API를 설정해주세요.*`;
@@ -765,18 +842,20 @@ app.post('/api/analysis/execute', async (req, res) => {
       const datasetId = fileId.replace('dataset_', '');
       console.log('📊 Processing dataset:', datasetId);
       
-      const mockData = generateMockDataForDataset(datasetId);
+      // 실제 parquet 파일에서 데이터 읽기
+      const realData = await readParquetDataset(datasetId);
       const datasetConfigs = {
         'campaign_data': { name: 'Campaign Data' },
         'adpack_data': { name: 'AdPack Data' }
       };
       
       fileData = {
-        data: mockData,
+        data: realData.rows,
         metadata: {
           fileName: datasetConfigs[datasetId]?.name || 'Dataset',
-          fileSize: mockData.length,
-          rowCount: mockData.length
+          fileSize: realData.rows.length,
+          rowCount: realData.rows.length,
+          columns: realData.columns
         }
       };
     }
