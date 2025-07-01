@@ -9,6 +9,8 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const { processDataWithGemini, generateWeeklyReportWithGemini, generateTimeBasedAnalysisWithGemini } = require('./utils/geminiProcessor');
 const OpenAI = require("openai");
+const parquet = require('parquetjs');
+const duckdb = require('duckdb');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -754,9 +756,31 @@ app.post('/api/analysis/execute', async (req, res) => {
       });
     }
     
-    // 파일 데이터 조회
+    // 파일 데이터 조회 (데이터셋 또는 업로드된 파일)
     console.log('📁 === FETCHING FILE DATA ===');
-    const fileData = fileStorage.get(fileId);
+    let fileData = fileStorage.get(fileId);
+    
+    // 데이터셋인 경우 처리
+    if (fileId.startsWith('dataset_')) {
+      const datasetId = fileId.replace('dataset_', '');
+      console.log('📊 Processing dataset:', datasetId);
+      
+      const mockData = generateMockDataForDataset(datasetId);
+      const datasetConfigs = {
+        'campaign_data': { name: 'Campaign Data' },
+        'adpack_data': { name: 'AdPack Data' }
+      };
+      
+      fileData = {
+        data: mockData,
+        metadata: {
+          fileName: datasetConfigs[datasetId]?.name || 'Dataset',
+          fileSize: mockData.length,
+          rowCount: mockData.length
+        }
+      };
+    }
+    
     if (!fileData) {
       console.error('❌ File data not found for fileId:', fileId);
       console.error('❌ Available fileIds:', Array.from(fileStorage.keys()));
@@ -835,9 +859,13 @@ app.post('/api/analysis/execute', async (req, res) => {
     }
     
     console.log('🧹 === CLEANING UP ===');
-    // 임시 파일 데이터 정리
-    fileStorage.delete(fileId);
-    console.log('✅ File data cleaned up');
+    // 임시 파일 데이터 정리 (데이터셋이 아닌 경우에만)
+    if (!fileId.startsWith('dataset_')) {
+      fileStorage.delete(fileId);
+      console.log('✅ File data cleaned up');
+    } else {
+      console.log('📊 Dataset data - no cleanup needed');
+    }
     
     console.log('📤 === SENDING RESPONSE ===');
     const response = {
@@ -1914,6 +1942,281 @@ app.get('/api/chat/recent', async (req, res) => {
 
 // ===== END CHAT API ENDPOINTS =====
 
+// ===== DATASET API ENDPOINTS =====
+
+// Get available datasets
+app.get('/api/datasets', async (req, res) => {
+  try {
+    const datasets = [
+      {
+        id: 'campaign_data',
+        name: 'Campaign Data',
+        description: '캠페인 레벨 데이터 (Publisher: Meta)',
+        file: '/db/campaign_data.parquet',
+        icon: '📊',
+        expectedColumns: [
+          'campaign_id', 'campaign_name', 'campaign_status', 'budget', 
+          'spend', 'impressions', 'clicks', 'ctr', 'cpc', 'cpm'
+        ]
+      },
+      {
+        id: 'adpack_data',
+        name: 'AdPack Data',
+        description: '광고 팩 레벨 데이터 (Campaign ID 기반 맵핑)',
+        file: '/db/adpack_data.parquet',
+        icon: '📈',
+        expectedColumns: [
+          'adpack_id', 'campaign_id', 'ad_name', 'ad_status', 
+          'spend', 'impressions', 'clicks', 'ctr', 'cpc', 'cpm', 'conversions'
+        ]
+      }
+    ];
+
+    res.json({
+      success: true,
+      datasets
+    });
+  } catch (error) {
+    console.error('Error fetching datasets:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch datasets',
+      details: error.message
+    });
+  }
+});
+
+// Process dataset for analysis
+app.post('/api/datasets/process', async (req, res) => {
+  try {
+    const { datasetId } = req.body;
+    const userId = req.headers['x-user-id'];
+
+    if (!datasetId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Dataset ID is required'
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User ID is required'
+      });
+    }
+
+    // Dataset configuration
+    const datasetConfigs = {
+      'campaign_data': {
+        name: 'Campaign Data',
+        file: path.join(__dirname, 'data/campaign_data.parquet')
+      },
+      'adpack_data': {
+        name: 'AdPack Data',
+        file: path.join(__dirname, 'data/adpack_data.parquet')
+      }
+    };
+
+    const config = datasetConfigs[datasetId];
+    if (!config) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid dataset ID'
+      });
+    }
+
+    // Check if file exists
+    if (!fs.existsSync(config.file)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Dataset file not found'
+      });
+    }
+
+    // 1. Parquet 파일에서 데이터 읽기 (DuckDB 사용)
+    let rows = [];
+    let columns = [];
+    try {
+      const db = new duckdb.Database(':memory:');
+      const con = db.connect();
+      // DuckDB는 파일 경로를 직접 쿼리할 수 있음
+      const query = `SELECT * FROM read_parquet('${config.file.replace(/'/g, "''")}')`;
+      const result = await new Promise((resolve, reject) => {
+        con.all(query, (err, res) => {
+          if (err) reject(err);
+          else resolve(res);
+        });
+      });
+      // BigInt 값을 일반 숫자로 변환
+      rows = convertBigInts(result);
+      columns = rows[0] ? Object.keys(rows[0]) : [];
+      con.close();
+      db.close();
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to read parquet file',
+        details: err.message
+      });
+    }
+
+    if (!columns.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'No columns found in dataset'
+      });
+    }
+
+    // 2. 컬럼 매핑 추천 (내부 함수 직접 호출)
+    let mappingResult;
+    try {
+      mappingResult = await generateColumnMapping(columns);
+    } catch (err) {
+      mappingResult = generateSimpleMapping(columns);
+    }
+
+    res.json({
+      success: true,
+      datasetId,
+      datasetName: config.name,
+      columns,
+      data: rows,
+      ...mappingResult,
+      fileId: `dataset_${datasetId}`,
+      rowCount: rows.length
+    });
+
+  } catch (error) {
+    console.error('Error processing dataset:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to process dataset',
+      details: error.message
+    });
+  }
+});
+
+// Generate mock data for datasets
+const generateMockDataForDataset = (datasetId) => {
+  const mockData = {
+    'campaign_data': [
+      {
+        campaign_id: 'CAMP001',
+        campaign_name: 'Summer Sale Campaign',
+        campaign_status: 'ACTIVE',
+        budget: 5000,
+        spend: 3200,
+        impressions: 150000,
+        clicks: 4500,
+        ctr: '3.0%',
+        cpc: 0.71,
+        cpm: 21.33
+      },
+      {
+        campaign_id: 'CAMP002',
+        campaign_name: 'Brand Awareness',
+        campaign_status: 'ACTIVE',
+        budget: 3000,
+        spend: 2800,
+        impressions: 200000,
+        clicks: 3200,
+        ctr: '1.6%',
+        cpc: 0.88,
+        cpm: 14.00
+      },
+      {
+        campaign_id: 'CAMP003',
+        campaign_name: 'Product Launch',
+        campaign_status: 'PAUSED',
+        budget: 8000,
+        spend: 6500,
+        impressions: 300000,
+        clicks: 8900,
+        ctr: '3.0%',
+        cpc: 0.73,
+        cpm: 21.67
+      }
+    ],
+    'adpack_data': [
+      {
+        adpack_id: 'ADP001',
+        campaign_id: 'CAMP001',
+        ad_name: 'Summer Sale Banner',
+        ad_status: 'ACTIVE',
+        spend: 1200,
+        impressions: 50000,
+        clicks: 1800,
+        ctr: '3.6%',
+        cpc: 0.67,
+        cpm: 24.00,
+        conversions: 45
+      },
+      {
+        adpack_id: 'ADP002',
+        campaign_id: 'CAMP001',
+        ad_name: 'Summer Sale Video',
+        ad_status: 'ACTIVE',
+        spend: 2000,
+        impressions: 100000,
+        clicks: 2700,
+        ctr: '2.7%',
+        cpc: 0.74,
+        cpm: 20.00,
+        conversions: 67
+      },
+      {
+        adpack_id: 'ADP003',
+        campaign_id: 'CAMP002',
+        ad_name: 'Brand Video',
+        ad_status: 'ACTIVE',
+        spend: 2800,
+        impressions: 200000,
+        clicks: 3200,
+        ctr: '1.6%',
+        cpc: 0.88,
+        cpm: 14.00,
+        conversions: 89
+      }
+    ]
+  };
+
+  return mockData[datasetId] || [];
+};
+
+// Generate column mapping for datasets
+const generateColumnMappingForDataset = (datasetId) => {
+  const mappings = {
+    'campaign_data': {
+      campaign: 'campaign_name',
+      spend: 'spend',
+      impressions: 'impressions',
+      clicks: 'clicks',
+      ctr: 'ctr',
+      cpc: 'cpc',
+      cpm: 'cpm',
+      budget: 'budget',
+      status: 'campaign_status'
+    },
+    'adpack_data': {
+      campaign: 'campaign_id',
+      ad: 'ad_name',
+      spend: 'spend',
+      impressions: 'impressions',
+      clicks: 'clicks',
+      ctr: 'ctr',
+      cpc: 'cpc',
+      cpm: 'cpm',
+      conversions: 'conversions',
+      status: 'ad_status'
+    }
+  };
+
+  return mappings[datasetId] || {};
+};
+
+// ===== END DATASET API ENDPOINTS =====
+
 // Error handling middleware
 app.use((error, req, res, next) => {
   console.error('Server Error:', error);
@@ -2002,5 +2305,30 @@ app.post('/api/test-openai', async (req, res) => {
     });
   }
 });
+
+// BigInt를 일반 숫자로 변환하는 함수
+const convertBigInts = (obj) => {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (typeof obj === 'bigint') {
+    return Number(obj);
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(convertBigInts);
+  }
+  
+  if (typeof obj === 'object') {
+    const converted = {};
+    for (const [key, value] of Object.entries(obj)) {
+      converted[key] = convertBigInts(value);
+    }
+    return converted;
+  }
+  
+  return obj;
+};
 
 module.exports = app;

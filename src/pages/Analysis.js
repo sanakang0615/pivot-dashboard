@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, X, FileText, FolderOpen, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Menu, X, FileText, FolderOpen, ArrowRight, AlertTriangle, Database } from 'lucide-react';
 import ColumnMappingModal from '../components/ColumnMappingModal';
 import HeatmapChart from '../components/HeatmapChart';
 import Sidebar from '../components/Common/Sidebar';
+import DatasetSelector from '../components/Common/DatasetSelector';
 
 const Analysis = () => {
   const { userId, isSignedIn } = useAuth();
@@ -22,6 +23,9 @@ const Analysis = () => {
   
   // Login modal state
   const [showLoginModal, setShowLoginModal] = useState(false);
+  
+  // Dataset selector state
+  const [showDatasetSelector, setShowDatasetSelector] = useState(false);
 
   // Fetch user's analysis list
   useEffect(() => {
@@ -285,6 +289,49 @@ const Analysis = () => {
     setShowMappingModal(false);
     setAnalysisResult(null);
     setError(null);
+  };
+
+  // Handle dataset selection
+  const handleDatasetSelected = async (datasetInfo) => {
+    if (!isSignedIn) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setShowDatasetSelector(false);
+    
+    try {
+      // 데이터셋 정보를 파일 업로드 결과와 유사한 형태로 변환
+      const mockFileData = {
+        success: true,
+        columns: datasetInfo.columns,
+        fileId: `dataset_${datasetInfo.id}`,
+        datasetInfo: datasetInfo
+      };
+      
+      setFileData(mockFileData);
+      
+      // 백엔드에서 받은 컬럼 매핑을 사용
+      if (datasetInfo.columnMapping) {
+        setMappingResult({ 
+          mapping: datasetInfo.columnMapping,
+          fileId: mockFileData.fileId
+        });
+        setShowMappingModal(true);
+        setStep(2);
+      } else {
+        // 컬럼 매핑 제안
+        await suggestColumnMapping(datasetInfo.columns, mockFileData.fileId);
+      }
+      
+    } catch (error) {
+      console.error('Dataset processing failed:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatNumber = (num) => {
@@ -585,6 +632,90 @@ const Analysis = () => {
               position: 'relative',
               overflow: 'hidden'
             }}>
+              
+              {/* Data Source Selection */}
+              <div style={{ marginBottom: '3rem' }}>
+                <h3 style={{
+                  fontSize: '1.2rem',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '1.5rem'
+                }}>
+                  Select Data Source
+                </h3>
+                
+                <div style={{
+                  display: 'flex',
+                  gap: '1rem',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap'
+                }}>
+                  {/* Built-in Dataset Option */}
+                  <button
+                    onClick={() => setShowDatasetSelector(true)}
+                    disabled={loading}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '1rem 1.5rem',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      fontSize: '0.95rem',
+                      fontWeight: '600',
+                      transition: 'all 0.2s ease',
+                      opacity: loading ? 0.6 : 1,
+                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        e.target.style.transform = 'translateY(-2px)';
+                        e.target.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!loading) {
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                      }
+                    }}
+                  >
+                    <Database size={18} />
+                    Use Built-in Dataset
+                  </button>
+                  
+                  {/* Divider */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    color: '#9ca3af',
+                    fontSize: '0.9rem',
+                    fontWeight: '500'
+                  }}>
+                    or
+                  </div>
+                  
+                  {/* File Upload Option */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    padding: '1rem 1.5rem',
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '12px',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    color: '#374151'
+                  }}>
+                    <FileText size={18} />
+                    File Upload
+                  </div>
+                </div>
+              </div>
               <input
                 type="file"
                 accept=".csv,.xlsx,.xls"
@@ -901,6 +1032,14 @@ const Analysis = () => {
           )}
         </div>
       </main>
+
+      {/* Dataset Selector Modal */}
+      {showDatasetSelector && (
+        <DatasetSelector
+          onDatasetSelected={handleDatasetSelected}
+          onCancel={() => setShowDatasetSelector(false)}
+        />
+      )}
 
       {/* Login Required Modal */}
       {showLoginModal && (

@@ -64,9 +64,9 @@ const ColumnMappingModal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-ㅊlg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">컬럼 매핑 확인</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Column Mapping Review</h2>
           {/* <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -77,10 +77,9 @@ const ColumnMappingModal = ({
         
         <div className="mb-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-semibold text-blue-800 mb-2">📋 매핑 안내</h3>
+            <h3 className="font-semibold text-blue-800 mb-2">📋 Mapping Guide</h3>
             <p className="text-blue-700 text-sm">
-              업로드된 파일의 컬럼들이 표준 마케팅 데이터 컬럼에 자동으로 매핑되었습니다. 
-              확인 후 수정이 필요하면 드롭다운에서 올바른 컬럼을 선택해주세요.
+              The columns of the uploaded file have been automatically mapped to standard marketing data columns. If you need to make changes, please select the correct column from the dropdown.
             </p>
           </div>
         </div>
@@ -88,53 +87,64 @@ const ColumnMappingModal = ({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 매핑 설정 영역 */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">컬럼 매핑 설정</h3>
+            <h3 className="text-lg font-semibold mb-4">Column Mapping Settings</h3>
+            <div className="flex items-center justify-between px-2 mb-2">
+              <span className="text-xs text-gray-500 font-semibold">업로드 파일의 컬럼</span>
+              <span className="text-xs text-gray-500 font-semibold">스탠다드 컬럼명</span>
+            </div>
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {Object.entries(editedMapping).map(([userColumn, mappedColumn], idx) => (
-                <div key={userColumn + '-' + idx} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center">
-                      <span className="font-medium text-gray-800 truncate" title={userColumn}>
-                        {userColumn}
-                      </span>
-                      {mappingResult?.confidence?.[userColumn] && (
-                        <span className="ml-2 flex items-center">
-                          <span className="text-lg">
-                            {getConfidenceIcon(mappingResult.confidence[userColumn])}
-                          </span>
-                          <span className={`ml-1 text-xs ${getConfidenceColor(mappingResult.confidence[userColumn])}`}>
-                            {Math.round(mappingResult.confidence[userColumn] * 100)}%
-                          </span>
+              {(() => {
+                const allUserColumns = [
+                  ...new Set([
+                    ...Object.keys(editedMapping),
+                    ...(mappingResult?.unmapped || [])
+                  ])
+                ];
+                return allUserColumns.map((userColumn, idx) => (
+                  <div key={userColumn + '-' + idx} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center">
+                        <span className="font-medium text-gray-800 truncate" title={userColumn}>
+                          {userColumn}
                         </span>
-                      )}
+                        {mappingResult?.confidence?.[userColumn] && (
+                          <span className="ml-2 flex items-center">
+                            <span className="text-lg">
+                              {getConfidenceIcon(mappingResult.confidence[userColumn])}
+                            </span>
+                            <span className={`ml-1 text-xs ${getConfidenceColor(mappingResult.confidence[userColumn])}`}>
+                              {Math.round(mappingResult.confidence[userColumn] * 100)}%
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center ml-4">
+                      <span className="mx-3 text-gray-400">→</span>
+                      <select 
+                        value={editedMapping[userColumn] || ''} 
+                        onChange={(e) => handleMappingChange(userColumn, e.target.value)}
+                        className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">매핑 안함</option>
+                        {standardColumns.map(col => (
+                          <option key={col} value={col}>{col}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center ml-4">
-                    <span className="mx-3 text-gray-400">→</span>
-                    <select 
-                      value={mappedColumn || ''} 
-                      onChange={(e) => handleMappingChange(userColumn, e.target.value)}
-                      className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">매핑 안함</option>
-                      {standardColumns.map(col => (
-                        <option key={col} value={col}>{col}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           </div>
 
           {/* 매핑 상태 요약 */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">매핑 상태</h3>
+            <h3 className="text-lg font-semibold mb-4">Mapping Status</h3>
             
             {/* 매핑된 컬럼들 */}
             <div className="mb-4">
-              <h4 className="font-medium text-green-700 mb-2">✅ 매핑된 표준 컬럼</h4>
+              <h4 className="font-medium text-green-700 mb-2">✅ Mapped Standard Columns</h4>
               <div className="bg-green-50 border border-green-200 rounded p-3">
                 {getMappedStandardColumns().length > 0 ? (
                   <div className="flex flex-wrap gap-2">
@@ -153,7 +163,7 @@ const ColumnMappingModal = ({
             {/* 누락된 컬럼들 */}
             {getUnmappedStandardColumns().length > 0 && (
               <div className="mb-4">
-                <h4 className="font-medium text-orange-700 mb-2">⚠️ 누락된 표준 컬럼</h4>
+                <h4 className="font-medium text-orange-700 mb-2">⚠️ Missing Standard Columns</h4>
                 <div className="bg-orange-50 border border-orange-200 rounded p-3">
                   <div className="flex flex-wrap gap-2">
                     {getUnmappedStandardColumns().map((col, idx) => (
@@ -172,7 +182,7 @@ const ColumnMappingModal = ({
             {/* 매핑되지 않은 원본 컬럼들 */}
             {mappingResult?.unmapped?.length > 0 && (
               <div>
-                <h4 className="font-medium text-gray-700 mb-2">🔍 매핑되지 않은 컬럼</h4>
+                <h4 className="font-medium text-gray-700 mb-2">🔍 Unmapped Columns</h4>
                 <div className="bg-gray-50 border border-gray-200 rounded p-3">
                   <div className="flex flex-wrap gap-2">
                     {mappingResult.unmapped.map((col, idx) => (
@@ -193,7 +203,7 @@ const ColumnMappingModal = ({
         {/* 제안사항 */}
         {mappingResult?.suggestions && Object.keys(mappingResult.suggestions).length > 0 && (
           <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h4 className="font-medium text-yellow-800 mb-2">💡 매핑 제안</h4>
+            <h4 className="font-medium text-yellow-800 mb-2">💡 Mapping Suggestions</h4>
             {Object.entries(mappingResult.suggestions).map(([col, suggestions]) => (
               <div key={col} className="text-yellow-700 text-sm mb-1">
                 <strong>{col}</strong>: {suggestions.join(' 또는 ')}
