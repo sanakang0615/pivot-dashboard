@@ -342,12 +342,13 @@ const Analysis = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #fafbff 0%, #f8fafc 50%, #f1f5f9 100%)',
-      fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      position: 'relative'
-    }}>
+    <>
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #fafbff 0%, #f8fafc 50%, #f1f5f9 100%)',
+        fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        position: 'relative'
+      }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       {/* Global Auth Header */}
       <div style={{
@@ -644,6 +645,46 @@ const Analysis = () => {
                   Select Data Source
                 </h3>
                 
+                {/* Visual Upload Area */}
+                <div style={{
+                  marginBottom: '2rem',
+                  padding: '2rem',
+                  background: '#f3f4f6',
+                  borderRadius: '14px',
+                  border: '1.5px solid #e5e7eb',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '1.2rem'
+                }}>
+                  <div style={{
+                    fontSize: '2.5rem',
+                    color: '#64748b',
+                    marginBottom: '0.5rem'
+                  }}>
+                    <span className="tossface">📁</span>
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      fontSize: '1.05rem',
+                      fontWeight: 600,
+                      color: '#374151',
+                      marginBottom: '0.3rem'
+                    }}>
+                      Upload your marketing data file
+                    </div>
+                    <div style={{
+                      color: '#6b7280',
+                      fontSize: '0.95rem',
+                      lineHeight: 1.6
+                    }}>
+                      Supported formats: <b>CSV</b>, <b>Excel (.xlsx, .xls)</b>, <b>Parquet</b><br/>
+                      Max file size: 10MB
+                    </div>
+                  </div>
+                </div>
+                
                 <div style={{
                   display: 'flex',
                   gap: '1rem',
@@ -704,12 +745,12 @@ const Analysis = () => {
                     accept=".csv,.xlsx,.xls"
                     onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0])}
                     style={{ display: 'none' }}
-                    id="file-upload"
+                    id="file-upload-main"
                     disabled={loading}
                   />
                   
                   <label 
-                    htmlFor="file-upload" 
+                    htmlFor="file-upload-main" 
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -743,119 +784,7 @@ const Analysis = () => {
                   </label>
                 </div>
               </div>
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0])}
-                style={{ display: 'none' }}
-                id="file-upload"
-                disabled={loading}
-              />
-              
-              <label 
-                htmlFor="file-upload" 
-                style={{
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.6 : 1,
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{ marginBottom: '2rem' }}>
-                  <div style={{
-                    width: '120px',
-                    height: '120px',
-                    margin: '0 auto 2rem',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    borderRadius: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
-                  }}>
-                    <span className="tossface" style={{ 
-                      fontSize: '3rem',
-                      position: 'absolute',
-                      top: '-10px',
-                      right: '-10px',
-                      background: 'rgba(255, 255, 255, 0.9)',
-                      borderRadius: '16px',
-                      padding: '0.5rem',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-                    }}>
-                      📊
-                    </span>
-                    <div style={{ color: 'white', fontSize: '2.5rem' }}>📁</div>
-                  </div>
-                </div>
-                
-                <h2 style={{
-                  fontSize: 'clamp(1.5rem, 3vw, 2rem)',
-                  fontWeight: '700',
-                  color: '#1e293b',
-                  marginBottom: '1rem',
-                  letterSpacing: '-0.01em'
-                }}>
-                  Upload Your Marketing Data
-                </h2>
-                
-                <p style={{
-                  color: '#64748b',
-                  fontSize: '1.1rem',
-                  marginBottom: '2rem',
-                  lineHeight: '1.6'
-                }}>
-                  Drop your CSV or Excel file here, or click to browse
-                  <br />
-                  <span style={{ fontSize: '0.95rem', opacity: 0.8 }}>
-                    Maximum file size: 10MB
-                  </span>
-                </p>
-                
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  padding: '1rem 2rem',
-                  background: 'linear-gradient(135deg, #000000 0%, #1c1c1e 100%)',
-                  color: 'white',
-                  borderRadius: '14px',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  if (!loading) {
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.2)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!loading) {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.15)';
-                  }
-                }}>
-                  <span className="tossface" style={{ fontSize: '1.2rem' }}>🚀</span>
-                  Choose File
-                </div>
-                
-                <div style={{
-                  marginTop: '2rem',
-                  padding: '1rem',
-                  background: 'rgba(102, 126, 234, 0.1)',
-                  borderRadius: '12px',
-                  fontSize: '0.9rem',
-                  color: '#475569',
-                  lineHeight: '1.5'
-                }}>
-                  <p style={{ margin: 0, fontWeight: '500' }}>
-                    <span className="tossface" style={{ marginRight: '0.5rem' }}>💡</span>
-                    Recommended columns: Date, Campaign, Ad Set, Ad, Cost, Impression, Click, Purchase, Revenue
-                  </p>
-                </div>
-              </label>
+
             </div>
           )}
 
@@ -1232,7 +1161,22 @@ const Analysis = () => {
         </div>
       )}
     </div>
-  );
+    <style>{`
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+      }
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+      }
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-8px); }
+      }
+    `}</style>
+  </>
+);
 };
 
 // Pivot Table Card Component
