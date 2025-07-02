@@ -699,21 +699,48 @@ const Analysis = () => {
                   </div>
                   
                   {/* File Upload Option */}
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '1rem 1.5rem',
-                    background: 'rgba(255, 255, 255, 0.8)',
-                    border: '2px solid #e5e7eb',
-                    borderRadius: '12px',
-                    fontSize: '0.95rem',
-                    fontWeight: '600',
-                    color: '#374151'
-                  }}>
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={(e) => e.target.files[0] && handleFileUpload(e.target.files[0])}
+                    style={{ display: 'none' }}
+                    id="file-upload"
+                    disabled={loading}
+                  />
+                  
+                  <label 
+                    htmlFor="file-upload" 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '1rem 1.5rem',
+                      background: 'rgba(255, 255, 255, 0.8)',
+                      border: '2px solid #e5e7eb',
+                      borderRadius: '12px',
+                      fontSize: '0.95rem',
+                      fontWeight: '600',
+                      color: '#374151',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      opacity: loading ? 0.6 : 1,
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!loading) {
+                        e.target.style.transform = 'translateY(-2px)';
+                        e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!loading) {
+                        e.target.style.transform = 'translateY(0)';
+                        e.target.style.boxShadow = 'none';
+                      }
+                    }}
+                  >
                     <FileText size={18} />
                     File Upload
-                  </div>
+                  </label>
                 </div>
               </div>
               <input
@@ -930,18 +957,20 @@ const Analysis = () => {
                 gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
                 gap: '1.5rem'
               }}>
-                {Object.entries(analysisResult.pivotTables).map(([level, data]) => (
-                  <PivotTableCard 
-                    key={level} 
-                    level={level} 
-                    data={data} 
-                    formatNumber={formatNumber} 
-                  />
-                ))}
+                {Object.entries(analysisResult.pivotTables)
+                  .filter(([level, data]) => data && data.length > 0) // Only show tables with data
+                  .map(([level, data]) => (
+                    <PivotTableCard 
+                      key={level} 
+                      level={level} 
+                      data={data} 
+                      formatNumber={formatNumber} 
+                    />
+                  ))}
               </div>
 
               {/* Heatmap */}
-              {analysisResult.pivotTables?.Campaign && (
+              {analysisResult.pivotTables?.Campaign && analysisResult.pivotTables.Campaign.length > 0 && (
                 <div style={{
                   background: 'rgba(255, 255, 255, 0.8)',
                   backdropFilter: 'blur(20px)',

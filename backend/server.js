@@ -360,15 +360,15 @@ ${performanceDistribution.map(item =>
     // 상세한 데이터 요약 생성
     let dataContext = '';
     
-    if (pivotTables.Campaign && Array.isArray(pivotTables.Campaign)) {
+    if (pivotTables.Campaign && Array.isArray(pivotTables.Campaign) && pivotTables.Campaign.length > 0) {
       dataContext += getDetailedTableSummary(pivotTables.Campaign, 'Campaign') + '\n\n';
     }
     
-    if (pivotTables['Ad Set'] && Array.isArray(pivotTables['Ad Set'])) {
+    if (pivotTables['Ad Set'] && Array.isArray(pivotTables['Ad Set']) && pivotTables['Ad Set'].length > 0) {
       dataContext += getDetailedTableSummary(pivotTables['Ad Set'], 'Ad Set') + '\n\n';
     }
     
-    if (pivotTables.Ad && Array.isArray(pivotTables.Ad)) {
+    if (pivotTables.Ad && Array.isArray(pivotTables.Ad) && pivotTables.Ad.length > 0) {
       dataContext += getDetailedTableSummary(pivotTables.Ad, 'Ad') + '\n\n';
     }
 
@@ -619,8 +619,7 @@ const generatePivotTables = (data, columnMapping) => {
   levels.forEach(level => {
     if (!remappedData[0] || !remappedData[0][level]) {
       console.warn(`Column '${level}' not found in data, skipping`);
-      results[level] = [];
-      return;
+      return; // Skip this level entirely instead of adding empty array
     }
 
     const grouped = remappedData.reduce((acc, row) => {
@@ -644,7 +643,7 @@ const generatePivotTables = (data, columnMapping) => {
       return acc;
     }, {});
     
-    results[level] = Object.entries(grouped).map(([name, metrics]) => ({
+    const levelData = Object.entries(grouped).map(([name, metrics]) => ({
       [level]: name,
       Impression: Math.round(metrics.impression),
       CTR: metrics.impression ? (metrics.click / metrics.impression * 100).toFixed(2) + '%' : '0%',
@@ -655,6 +654,11 @@ const generatePivotTables = (data, columnMapping) => {
       CPA: metrics.purchase ? (metrics.cost / metrics.purchase).toFixed(2) : '0',
       Revenue: metrics.revenue.toFixed(2)
     })).sort((a, b) => b.Impression - a.Impression);
+    
+    // Only add to results if there's actual data
+    if (levelData.length > 0) {
+      results[level] = levelData;
+    }
   });
   
   return results;
