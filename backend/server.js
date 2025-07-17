@@ -85,29 +85,23 @@ const allowedOrigins = [
   'https://pivot-dashboard-3vsk06jsy-sanakang0615s-projects.vercel.app'
 ];
 
-// Middleware
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps, curl, etc.)
-    console.log('🔍 CORS check for origin:', origin);
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log('✅ CORS allowed for origin:', origin);
-      return callback(null, true);
-    } else {
-      console.log('❌ CORS blocked for origin:', origin);
-      return callback(new Error('Not allowed by CORS'));
-    }
+const corsOptions = {
+  origin: (origin, callback) => {
+    console.log('→ CORS origin header:', origin);
+    if (!origin) return callback(null, true); // allow non-browser clients
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS blocked for origin ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization', 'Origin', 'Accept', 'X-Requested-With'],
-  exposedHeaders: ['Content-Type', 'x-user-id'],
+  allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+  optionsSuccessStatus: 200,
   maxAge: 86400
-}));
+};
 
-// Explicitly handle OPTIONS for debugging CORS
-app.options('*', cors());
+// Apply unified CORS middleware
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Add request logging middleware
 app.use((req, res, next) => {
