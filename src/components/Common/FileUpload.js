@@ -2,17 +2,21 @@ import React, { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Upload, X, FileText, ArrowRight, CheckCircle } from 'lucide-react';
 import ColumnMappingModal from '../ColumnMappingModal';
+import CampaignAnalysisModal from '../CampaignAnalysisModal';
 
 const FileUpload = ({ onFileUploaded, onCancel }) => {
   const { userId, isLoaded, isSignedIn } = useAuth();
   
-  const [step, setStep] = useState(1); // 1: upload, 2: mapping, 3: analysis
+  const [step, setStep] = useState(1); // 1: upload, 2: campaign analysis, 3: mapping, 4: analysis
   
   const [file, setFile] = useState(null);
   const [fileData, setFileData] = useState(null);
   
   const [mappingResult, setMappingResult] = useState(null);
   const [showMappingModal, setShowMappingModal] = useState(false);
+  
+  const [campaignAnalysis, setCampaignAnalysis] = useState(null);
+  const [showCampaignAnalysisModal, setShowCampaignAnalysisModal] = useState(false);
   
   const [analysisResult, setAnalysisResult] = useState(null);
   
@@ -88,8 +92,9 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
       
       console.log('Column mapping suggested:', result);
       setMappingResult({ ...result, fileId });
-      setShowMappingModal(true);
-      setStep(2);
+      
+      // 캠페인 분석 수행
+      await analyzeCampaigns(result, fileId);
       
     } catch (error) {
       console.error('Column mapping suggestion failed:', error);
@@ -99,11 +104,73 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
     }
   };
 
-  // Step 3: Execute analysis after mapping confirmation
+  // Step 2.5: Campaign analysis
+  const analyzeCampaigns = async (mappingResult, fileId) => {
+    setLoading(true);
+    
+    try {
+      console.log('🔍 === ANALYZING CAMPAIGNS ===');
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/campaigns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          fileId,
+          columnMapping: mappingResult.mapping
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        console.warn('Campaign analysis failed, proceeding with column mapping:', result.error);
+        // 캠페인 분석이 실패해도 컬럼 매핑은 계속 진행
+        setShowMappingModal(true);
+        setStep(3);
+        return;
+      }
+      
+      console.log('✅ Campaign analysis completed:', result);
+      // result.success가 true인 경우, result 자체에 분석 데이터가 포함됨
+      setCampaignAnalysis(result);
+      setShowCampaignAnalysisModal(true);
+      setStep(2);
+      
+    } catch (error) {
+      console.error('Campaign analysis failed:', error);
+      // 에러가 발생해도 컬럼 매핑은 계속 진행
+      setShowMappingModal(true);
+      setStep(3);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCampaignAnalysisContinue = () => {
+    setShowCampaignAnalysisModal(false);
+    
+    // 캠페인 분석 결과를 매핑 결과에 추가
+    if (campaignAnalysis && mappingResult) {
+      setMappingResult({
+        ...mappingResult,
+        campaignContext: {
+          brand: campaignAnalysis.brand,
+          product: campaignAnalysis.product,
+          industry: campaignAnalysis.industry,
+          totalCampaigns: campaignAnalysis.total_campaigns
+        }
+      });
+    }
+    
+    setShowMappingModal(true);
+    setStep(3);
+  };
+
+  // Step 4: Execute analysis after mapping confirmation
   const executeAnalysis = async (confirmedMapping) => {
     setLoading(true);
     setShowMappingModal(false);
-    setStep(3);
+    setStep(4);
     setError(null);
     
     try {
@@ -136,7 +203,7 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
     } catch (error) {
       console.error('Analysis execution failed:', error);
       setError(error.message);
-      setStep(2); // Return to previous step on error
+      setStep(3); // Return to previous step on error
       setShowMappingModal(true);
     } finally {
       setLoading(false);
@@ -149,6 +216,8 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
     setFileData(null);
     setMappingResult(null);
     setShowMappingModal(false);
+    setCampaignAnalysis(null);
+    setShowCampaignAnalysisModal(false);
     setAnalysisResult(null);
     setError(null);
   };
@@ -349,7 +418,19 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
           </div>
         )}
 
-        {/* 2nd Step: Column Mapping Modal */}
+        {/* 2nd Step: Campaign Analysis Modal */}
+        <CampaignAnalysisModal
+          isOpen={showCampaignAnalysisModal}
+          onClose={() => {
+            setShowCampaignAnalysisModal(false);
+            setStep(1);
+          }}
+          campaignAnalysis={campaignAnalysis}
+          onContinue={handleCampaignAnalysisContinue}
+          loading={loading}
+        />
+
+        {/* 3rd Step: Column Mapping Modal */}
         <ColumnMappingModal
           isOpen={showMappingModal}
           onClose={() => {
@@ -361,8 +442,8 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
           loading={loading}
         />
 
-        {/* 3rd Step: Analysis Complete */}
-        {step === 3 && (
+        {/* 4th Step: Analysis Complete */}
+        {step === 4 && (
           <div style={{ textAlign: 'center' }}>
             {loading ? (
               <div>

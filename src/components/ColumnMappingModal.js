@@ -79,8 +79,20 @@ const ColumnMappingModal = ({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h3 className="font-semibold text-blue-800 mb-2">📋 Mapping Guide</h3>
             <p className="text-blue-700 text-sm">
-              The columns of the uploaded file have been automatically mapped to standard marketing data columns. If you need to make changes, please select the correct column from the dropdown.
+              The columns of the uploaded file have been automatically mapped to standard marketing data columns. 
+              The system has analyzed your campaign data to understand the context and improve mapping accuracy. 
+              If you need to make changes, please select the correct column from the dropdown.
             </p>
+            {mappingResult?.campaignContext && (
+              <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-300">
+                <h4 className="font-medium text-blue-800 mb-1">🎯 Campaign Context</h4>
+                <p className="text-blue-700 text-xs">
+                  Brand: <span className="font-medium">{mappingResult.campaignContext.brand}</span> | 
+                  Product: <span className="font-medium">{mappingResult.campaignContext.product}</span> | 
+                  Industry: <span className="font-medium">{mappingResult.campaignContext.industry}</span>
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

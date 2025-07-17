@@ -809,6 +809,82 @@ app.post('/api/mapping/suggest', async (req, res) => {
   }
 });
 
+// 2.5. 캠페인 분석 API
+app.post('/api/analysis/campaigns', async (req, res) => {
+  try {
+    const { fileId, columnMapping } = req.body;
+    
+    if (!fileId || !columnMapping) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Missing fileId or columnMapping' 
+      });
+    }
+
+    console.log('🔍 === CAMPAIGN ANALYSIS API HIT ===');
+    console.log('📁 File ID:', fileId);
+    console.log('🗺️ Column Mapping:', columnMapping);
+
+    // 파일 데이터 조회
+    let fileData = fileStorage.get(fileId);
+    
+    // 데이터셋인 경우 처리
+    if (fileId.startsWith('dataset_')) {
+      const datasetId = fileId.replace('dataset_', '');
+      console.log('📊 Processing dataset for campaign analysis:', datasetId);
+      
+      const realData = await readParquetDataset(datasetId);
+      const datasetConfigs = {
+        'campaign_data': { name: 'Campaign Data' },
+        'adpack_data': { name: 'AdPack Data' }
+      };
+      
+      fileData = {
+        data: realData.rows,
+        metadata: {
+          fileName: datasetConfigs[datasetId]?.name || 'Dataset',
+          fileSize: realData.rows.length,
+          rowCount: realData.rows.length,
+          columns: realData.columns
+        }
+      };
+    }
+    
+    if (!fileData) {
+      console.error('❌ File data not found for campaign analysis:', fileId);
+      return res.status(404).json({ 
+        success: false, 
+        error: 'File data not found or expired' 
+      });
+    }
+
+    console.log('✅ File data found for campaign analysis:', {
+      fileName: fileData.metadata.fileName,
+      rowCount: fileData.data.length
+    });
+
+    // 캠페인 분석 실행
+    const campaignAnalysis = await analyzeCampaigns(fileData, columnMapping);
+    
+    if (!campaignAnalysis.success) {
+      return res.status(500).json(campaignAnalysis);
+    }
+
+    res.json({
+      success: true,
+      ...campaignAnalysis
+    });
+
+  } catch (error) {
+    console.error('Campaign analysis error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to analyze campaigns',
+      details: error.message 
+    });
+  }
+});
+
 // 3. 분석 실행 API (피벗테이블, 히트맵만 생성)
 app.post('/api/analysis/execute', async (req, res) => {
   console.log('🎯 === ANALYSIS EXECUTE API HIT ===');
@@ -2380,6 +2456,254 @@ const convertBigInts = (obj) => {
   }
   
   return obj;
+};
+
+// Campaign analysis with LLM
+const analyzeCampaigns = async (fileData, columnMapping) => {
+  if (!process.env.OPENAI_API_KEY) {
+    return {
+      success: false,
+      error: 'OpenAI API key not configured'
+    };
+  }
+
+  try {
+    // 1단계: 캠페인 컬럼 찾기 (매핑이 없으면 유추)
+    let campaignColumn = Object.keys(columnMapping).find(key => 
+      columnMapping[key] === 'Campaign'
+    );
+
+    // 매핑이 없으면 컬럼명으로 유추
+    if (!campaignColumn) {
+      const allColumns = Object.keys(fileData.data[0] || {});
+      campaignColumn = allColumns.find(col => {
+        const lowerCol = col.toLowerCase();
+        return lowerCol.includes('campaign') || 
+               lowerCol.includes('camp') || 
+               lowerCol.includes('캠페인') ||
+               lowerCol.includes('광고') ||
+               lowerCol.includes('ad');
+      });
+    }
+
+    if (!campaignColumn) {
+      return {
+        success: false,
+        error: 'No campaign column found in data'
+      };
+    }
+
+    console.log(`🔍 Found campaign column: ${campaignColumn}`);
+
+    // 2단계: 유니크한 캠페인명 추출 및 전처리
+    const rawCampaignNames = fileData.data
+      .map(row => row[campaignColumn])
+      .filter(name => name && name.toString().trim() !== '');
+
+    // 전처리 함수
+    const preprocessCampaignNames = (names) => {
+      const processed = [];
+      
+      names.forEach(name => {
+        // "_" 단위로 분할
+        const parts = name.toString().split('_');
+        
+        parts.forEach(part => {
+          // 공백 제거
+          let cleaned = part.trim();
+          
+          // "["와 "]"로 둘러싸인 부분 제거
+          cleaned = cleaned.replace(/\[.*?\]/g, '');
+          
+          // 숫자로만 이루어진 것 제거
+          if (/^\d+$/.test(cleaned)) {
+            return;
+          }
+          
+          // 1월~12월 제거
+          cleaned = cleaned.replace(/[1-9]월|10월|11월|12월/g, '');
+          
+          // 특수문자만 포함된 것 제거
+          if (/^[^a-zA-Z가-힣0-9]+$/.test(cleaned)) {
+            return;
+          }
+          
+          // "디맨드젠" 제거
+          if (cleaned.includes('디맨드젠')) {
+            return;
+          }
+          
+          // "테스트" 포함된 것 제거
+          if (cleaned.includes('테스트')) {
+            return;
+          }
+          
+          // "남성/여성", "남성", "여성"만 있는 것 제거
+          if (cleaned === '남성/여성' || cleaned === '남성' || cleaned === '여성') {
+            return;
+          }
+          
+          // 1. "키워드"가 포함되어 있으면 키워드라는 말을 지우고 strip()
+          if (cleaned.includes('키워드')) {
+            cleaned = cleaned.replace(/키워드/g, '').trim();
+          }
+          
+          // 2. 마케팅 용어 제거
+          const marketingTerms = ['CEQ', 'tCPA', 'CTA', 'CPC', 'CPM', 'ROAS', 'CTR', 'CVR'];
+          let hasMarketingTerm = false;
+          marketingTerms.forEach(term => {
+            if (cleaned === term) {
+              hasMarketingTerm = true;
+            } else if (cleaned.includes(term)) {
+              cleaned = cleaned.replace(new RegExp(term, 'g'), '');
+            }
+          });
+          
+          // 마케팅 용어로만 이루어진 경우 제거
+          if (hasMarketingTerm) {
+            return;
+          }
+          
+          // 3. "영상", "배너"만 포함하고 있으면 삭제
+          if (cleaned === '영상' || cleaned === '배너') {
+            return;
+          }
+          
+          // 4. "지역", "타게팅" 제거
+          cleaned = cleaned.replace(/지역/g, '').replace(/타게팅/g, '').trim();
+          
+          // 빈 문자열이 아니면 추가
+          if (cleaned.trim() !== '') {
+            processed.push(cleaned.trim());
+          }
+        });
+      });
+      
+      // 유니크 처리
+      return [...new Set(processed)];
+    };
+
+    const processedCampaignNames = preprocessCampaignNames(rawCampaignNames);
+
+    if (processedCampaignNames.length === 0) {
+      return {
+        success: false,
+        error: 'No valid campaign names found after preprocessing'
+      };
+    }
+
+    console.log(`🔍 Raw campaign names:`, rawCampaignNames);
+    console.log(`🔍 Processed campaign names:`, processedCampaignNames);
+    console.log(`🔍 Analyzing ${processedCampaignNames.length} processed terms to identify single brand/product:`, processedCampaignNames);
+
+    const prompt = `You are a marketing data analyst with access to current information. Your task is to identify the SINGLE brand and product from a list of processed campaign terms.
+
+IMPORTANT: This file contains campaigns for ONE BRAND and ONE PRODUCT only. The terms below have been preprocessed to remove marketing jargon and common terms.
+
+ANALYSIS RULES:
+- SEARCH for real, existing companies and brands using your knowledge
+- Look for patterns across all terms to identify the single brand
+- Identify the single product/service being advertised
+- Use web search knowledge to verify companies exist
+- For Korean/Asian companies, provide English brand names when possible
+- If you cannot identify a specific brand, infer the industry/category based on remaining terms
+
+SEARCH REQUIREMENTS:
+- Actively search for and verify the existence of companies mentioned
+- Use your knowledge of current companies and brands
+- For Korean brands, search for their English equivalents
+- Be thorough in your search - these terms likely represent real companies
+
+EXAMPLES:
+- Terms: ["닥터디퍼런트", "브랜드"] 
+  → Search: "Dr. Different" (Korean skincare brand) → Single Brand: "Dr. Different", Single Product: "Skincare products"
+
+- Terms: ["디맨드젠", "마케팅"] 
+  → Search: "DemandGen" (marketing company) → Single Brand: "DemandGen", Single Product: "Marketing services"
+
+Processed campaign terms to analyze:
+${processedCampaignNames.map((name, index) => `${index + 1}. ${name}`).join('\n')}
+
+Provide your analysis in the following JSON format ONLY (no other text):
+{
+  "brand": "identified single brand name or 'Unknown Brand'",
+  "product": "identified single product/service or 'General Campaign'",
+  "industry": "industry category",
+  "target_audience": "target audience if evident",
+  "confidence": 0.9,
+  "description": "Brief but detailed description of the brand and product (2-3 sentences)",
+  "total_campaigns": ${rawCampaignNames.length}
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a marketing data analyst with extensive knowledge of global brands and companies. You have access to current information and can search for real companies. Your task is to actively search for and identify real brands and products from the provided terms. These terms have been preprocessed and likely represent actual company names or products. Use your search capabilities to verify companies exist, especially Korean and Asian brands. Always provide English brand names when possible. Be thorough in your search - these are likely real companies that should be identifiable."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 3000,
+      temperature: 0.3, // Slightly higher temperature for better inference
+    });
+
+    const responseText = completion.choices[0].message.content;
+    
+    console.log('🤖 Raw LLM response:', responseText);
+    
+    // Clean and parse JSON response
+    const cleanText = responseText.replace(/```json\n?|```\n?/g, '').trim();
+    let analysisResult;
+    
+    try {
+      analysisResult = JSON.parse(cleanText);
+    } catch (parseError) {
+      console.error('❌ JSON parsing failed:', parseError);
+      console.error('❌ Clean text:', cleanText);
+      
+      // Fallback: create basic analysis
+      analysisResult = {
+        brand: "Unknown Brand",
+        product: "General Campaign",
+        industry: "Unknown",
+        target_audience: "Unknown",
+        confidence: 0.5,
+        description: "Unable to identify specific brand and product from campaign names.",
+        total_campaigns: rawCampaignNames.length
+      };
+    }
+
+    // Validate and clean up the analysis
+    if (!analysisResult.brand || !analysisResult.product) {
+      console.error('❌ Invalid analysis structure');
+      throw new Error('Invalid analysis structure from LLM');
+    }
+
+    console.log('✅ Campaign analysis completed:', {
+      brand: analysisResult.brand,
+      product: analysisResult.product,
+      industry: analysisResult.industry,
+      confidence: analysisResult.confidence,
+      totalCampaigns: analysisResult.total_campaigns
+    });
+
+    return {
+      success: true,
+      ...analysisResult
+    };
+
+  } catch (error) {
+    console.error('❌ Campaign analysis failed:', error);
+    return {
+      success: false,
+      error: 'Failed to analyze campaigns',
+      details: error.message
+    };
+  }
 };
 
 module.exports = app;

@@ -3,6 +3,7 @@ import { useAuth, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-re
 import { useNavigate } from 'react-router-dom';
 import { Menu, X, FileText, FolderOpen, ArrowRight, AlertTriangle, Database } from 'lucide-react';
 import ColumnMappingModal from '../components/ColumnMappingModal';
+import CampaignAnalysisModal from '../components/CampaignAnalysisModal';
 import HeatmapChart from '../components/HeatmapChart';
 import Sidebar from '../components/Common/Sidebar';
 import DatasetSelector from '../components/Common/DatasetSelector';
@@ -14,6 +15,8 @@ const Analysis = () => {
   const [fileData, setFileData] = useState(null);
   const [mappingResult, setMappingResult] = useState(null);
   const [showMappingModal, setShowMappingModal] = useState(false);
+  const [campaignAnalysis, setCampaignAnalysis] = useState(null);
+  const [showCampaignAnalysisModal, setShowCampaignAnalysisModal] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -107,8 +110,9 @@ const Analysis = () => {
       
       //console.log('Column mapping suggested:', result);
       setMappingResult({ ...result, fileId });
-      setShowMappingModal(true);
-      setStep(2);
+      
+      // 캠페인 분석 수행
+      await analyzeCampaigns(result, fileId);
       
     } catch (error) {
       console.error('Column mapping suggestion failed:', error);
@@ -116,6 +120,67 @@ const Analysis = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const analyzeCampaigns = async (mappingResult, fileId) => {
+    setLoading(true);
+    
+    try {
+      console.log('🔍 === ANALYZING CAMPAIGNS ===');
+      
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/campaigns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          fileId,
+          columnMapping: mappingResult.mapping
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!result.success) {
+        console.warn('Campaign analysis failed, proceeding with column mapping:', result.error);
+        // 캠페인 분석이 실패해도 컬럼 매핑은 계속 진행
+        setShowMappingModal(true);
+        setStep(3);
+        return;
+      }
+      
+      console.log('✅ Campaign analysis completed:', result);
+      // result.success가 true인 경우, result 자체에 분석 데이터가 포함됨
+      setCampaignAnalysis(result);
+      setShowCampaignAnalysisModal(true);
+      setStep(2);
+      
+    } catch (error) {
+      console.error('Campaign analysis failed:', error);
+      // 에러가 발생해도 컬럼 매핑은 계속 진행
+      setShowMappingModal(true);
+      setStep(3);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCampaignAnalysisContinue = () => {
+    setShowCampaignAnalysisModal(false);
+    
+    // 캠페인 분석 결과를 매핑 결과에 추가
+    if (campaignAnalysis && mappingResult) {
+      setMappingResult({
+        ...mappingResult,
+        campaignContext: {
+          brand: campaignAnalysis.brand,
+          product: campaignAnalysis.product,
+          industry: campaignAnalysis.industry,
+          totalCampaigns: campaignAnalysis.total_campaigns
+        }
+      });
+    }
+    
+    setShowMappingModal(true);
+    setStep(3);
   };
 
   const executeAnalysis = async (confirmedMapping) => {
@@ -287,6 +352,8 @@ const Analysis = () => {
     setFileData(null);
     setMappingResult(null);
     setShowMappingModal(false);
+    setCampaignAnalysis(null);
+    setShowCampaignAnalysisModal(false);
     setAnalysisResult(null);
     setError(null);
   };
@@ -319,8 +386,8 @@ const Analysis = () => {
           mapping: datasetInfo.columnMapping,
           fileId: mockFileData.fileId
         });
-        setShowMappingModal(true);
-        setStep(2);
+        // 캠페인 분석 수행
+        await analyzeCampaigns({ mapping: datasetInfo.columnMapping }, mockFileData.fileId);
       } else {
         // 컬럼 매핑 제안
         await suggestColumnMapping(datasetInfo.columns, mockFileData.fileId);
@@ -542,8 +609,9 @@ const Analysis = () => {
             }}>
               {[
                 { num: 1, label: 'Upload File', emoji: '📁' },
-                { num: 2, label: 'Map Columns', emoji: '🔗' },
-                { num: 3, label: 'View Results', emoji: '📊' }
+                { num: 2, label: 'Analyze Campaigns', emoji: '🔍' },
+                { num: 3, label: 'Map Columns', emoji: '🔗' },
+                { num: 4, label: 'View Results', emoji: '📊' }
               ].map((stepInfo, index) => (
                 <div key={stepInfo.num} style={{ display: 'flex', alignItems: 'center' }}>
                   <div style={{
@@ -571,7 +639,7 @@ const Analysis = () => {
                       {stepInfo.label}
                     </span>
                   </div>
-                  {index < 2 && (
+                  {index < 3 && (
                     <div style={{
                       width: '4rem',
                       height: '3px',
@@ -789,6 +857,18 @@ const Analysis = () => {
           )}
 
           {/* Rest of the component remains the same */}
+          {/* Campaign Analysis Modal */}
+          <CampaignAnalysisModal
+            isOpen={showCampaignAnalysisModal}
+            onClose={() => {
+              setShowCampaignAnalysisModal(false);
+              setStep(1);
+            }}
+            campaignAnalysis={campaignAnalysis}
+            onContinue={handleCampaignAnalysisContinue}
+            loading={loading}
+          />
+
           {/* Column Mapping Modal */}
           <ColumnMappingModal
             isOpen={showMappingModal}
@@ -802,7 +882,7 @@ const Analysis = () => {
           />
 
           {/* Analysis Results */}
-          {step === 3 && analysisResult && (
+          {step === 4 && analysisResult && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               {/* Results content remains the same as before */}
               <div style={{
