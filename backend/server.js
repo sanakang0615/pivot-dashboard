@@ -10,7 +10,6 @@ const mongoose = require('mongoose');
 const { processDataWithGemini, generateWeeklyReportWithGemini, generateTimeBasedAnalysisWithGemini } = require('./utils/geminiProcessor');
 const OpenAI = require("openai");
 const parquet = require('parquetjs');
-const duckdb = require('duckdb');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -93,32 +92,42 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','x-user-id','Authorization'],
+  allowedHeaders: ['Content-Type','x-user-id','Authorization','X-Requested-With'],
+  exposedHeaders: ['Content-Length','X-Requested-With'],
   optionsSuccessStatus: 200,
   maxAge: 86400
 };
 
-// ================== 미들웨어 순서 수정 시작 ==================
-
-// 1. CORS 미들웨어를 다른 모든 미들웨어와 라우트보다 먼저 배치합니다.
-// 이렇게 하면 모든 요청이 Preflight 요청을 포함하여 CORS 정책을 먼저 통과하게 됩니다.
+// CORS 미들웨어는 반드시 라우트 정의 전에!
 app.use(cors(corsOptions));
 
-// 2. 요청 로깅 미들웨어 (디버깅에 유용)
+// Handle preflight requests explicitly for better compatibility
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, x-user-id, Authorization, X-Requested-With');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '6400');
+  res.sendStatus(200);
+});
+
+// Add request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  console.log('Request headers:', req.headers);
   console.log('Origin:', req.headers.origin);
   next();
 });
 
-// 3. JSON 및 URL-encoded 바디 파서를 CORS 미들웨어 뒤에 배치합니다.
+// Ensure JSON responses
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json');
+  next();
+});
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// 참고: app.options('*', ...) 와 전역 res.setHeader('Content-Type', ...)는 제거되었습니다.
-// `cors` 미들웨어가 이 모든 것을 자동으로 더 안전하게 처리합니다.
-
-// ================== 미들웨어 순서 수정 끝 ====================
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -140,7 +149,6 @@ const upload = multer({
 });
 
 // Utility functions for data processing
-// ... (이하 모든 유틸리티 함수 및 API 라우트 코드는 기존과 동일합니다)
 const processCSV = (buffer) => {
   return new Promise((resolve, reject) => {
     Papa.parse(buffer.toString(), {
@@ -208,7 +216,6 @@ const processExcel = (buffer) => {
 const readParquetDataset = async (datasetId) => {
   try {
     console.log(`📊 Reading parquet dataset: ${datasetId}`);
-    
     // Dataset configuration
     const datasetConfigs = {
       'campaign_data': {
@@ -220,43 +227,25 @@ const readParquetDataset = async (datasetId) => {
         file: path.join(__dirname, 'data/adpack_data.parquet')
       }
     };
-
     const config = datasetConfigs[datasetId];
     if (!config) {
       throw new Error(`Invalid dataset ID: ${datasetId}`);
     }
-
     // Check if file exists
     if (!fs.existsSync(config.file)) {
       throw new Error(`Dataset file not found: ${config.file}`);
     }
-
     console.log(`📁 Reading parquet file: ${config.file}`);
-
-    // DuckDB를 사용하여 parquet 파일 읽기
-    const db = new duckdb.Database(':memory:');
-    const con = db.connect();
-    
-    // DuckDB는 파일 경로를 직접 쿼리할 수 있음
-    const query = `SELECT * FROM read_parquet('${config.file.replace(/'/g, "''")}')`;
-    console.log(`🔍 Executing query: ${query}`);
-    
-    const result = await new Promise((resolve, reject) => {
-      con.all(query, (err, res) => {
-        if (err) {
-          console.error('❌ DuckDB query error:', err);
-          reject(err);
-        } else {
-          console.log(`✅ DuckDB query successful, returned ${res.length} rows`);
-          resolve(res);
-        }
-      });
-    });
-
-    // BigInt 값을 일반 숫자로 변환
-    const rows = convertBigInts(result);
+    // parquetjs로 파일 읽기
+    const reader = await parquet.ParquetReader.openFile(config.file);
+    const cursor = reader.getCursor();
+    const rows = [];
+    let record = null;
+    while (record = await cursor.next()) {
+      rows.push(record);
+    }
+    await reader.close();
     const columns = rows[0] ? Object.keys(rows[0]) : [];
-
     console.log(`📊 Dataset loaded successfully:`, {
       datasetId,
       fileName: config.name,
@@ -264,17 +253,12 @@ const readParquetDataset = async (datasetId) => {
       columnCount: columns.length,
       columns: columns
     });
-
-    con.close();
-    db.close();
-
     return {
       rows,
       columns,
       datasetId,
       fileName: config.name
     };
-
   } catch (error) {
     console.error(`❌ Error reading parquet dataset ${datasetId}:`, error);
     throw error;
@@ -2123,21 +2107,30 @@ app.post('/api/datasets/process', async (req, res) => {
     let rows = [];
     let columns = [];
     try {
-      const db = new duckdb.Database(':memory:');
-      const con = db.connect();
-      // DuckDB는 파일 경로를 직접 쿼리할 수 있음
-      const query = `SELECT * FROM read_parquet('${config.file.replace(/'/g, "''")}')`;
-      const result = await new Promise((resolve, reject) => {
-        con.all(query, (err, res) => {
-          if (err) reject(err);
-          else resolve(res);
-        });
-      });
-      // BigInt 값을 일반 숫자로 변환
-      rows = convertBigInts(result);
+      // const db = new duckdb.Database(':memory:');
+      // const con = db.connect();
+      // // DuckDB는 파일 경로를 직접 쿼리할 수 있음
+      // const query = `SELECT * FROM read_parquet('${config.file.replace(/'/g, "''")}')`;
+      // const result = await new Promise((resolve, reject) => {
+      //   con.all(query, (err, res) => {
+      //     if (err) reject(err);
+      //     else resolve(res);
+      //   });
+      // });
+      // // BigInt 값을 일반 숫자로 변환
+      // rows = convertBigInts(result);
+      // columns = rows[0] ? Object.keys(rows[0]) : [];
+      // con.close();
+      // db.close();
+      // 위 DuckDB 코드 제거, parquetjs로 대체
+      const reader = await parquet.ParquetReader.openFile(config.file);
+      const cursor = reader.getCursor();
+      let record = null;
+      while (record = await cursor.next()) {
+        rows.push(record);
+      }
+      await reader.close();
       columns = rows[0] ? Object.keys(rows[0]) : [];
-      con.close();
-      db.close();
     } catch (err) {
       return res.status(500).json({
         success: false,
