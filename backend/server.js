@@ -324,11 +324,11 @@ const generateAIInsights = async (pivotTables) => {
       }
       
       // 전체 통계 계산
-      const totalImpressions = tableData.reduce((sum, item) => sum + (parseFloat(item.Impression) || 0), 0);
-      const totalClicks = tableData.reduce((sum, item) => sum + (parseFloat(item.Click) || 0), 0);
-      const totalPurchases = tableData.reduce((sum, item) => sum + (parseFloat(item.Purchase) || 0), 0);
-      const totalCost = tableData.reduce((sum, item) => sum + (parseFloat(item.Cost) || 0), 0);
-      const totalRevenue = tableData.reduce((sum, item) => sum + (parseFloat(item.Revenue) || 0), 0);
+      const totalImpressions = tableData.reduce((sum, item) => sum + (parseFloat(item.impressions) || 0), 0);
+      const totalClicks = tableData.reduce((sum, item) => sum + (parseFloat(item.clicks) || 0), 0);
+      const totalPurchases = tableData.reduce((sum, item) => sum + (parseFloat(item.orders) || 0), 0);
+      const totalCost = tableData.reduce((sum, item) => sum + (parseFloat(item.cost) || 0), 0);
+      const totalRevenue = tableData.reduce((sum, item) => sum + (parseFloat(item.revenue) || 0), 0);
       
       const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions * 100).toFixed(2) : 0;
       const avgCVR = totalClicks > 0 ? (totalPurchases / totalClicks * 100).toFixed(2) : 0;
@@ -338,14 +338,14 @@ const generateAIInsights = async (pivotTables) => {
       // 성과 분포 분석
       const performanceDistribution = tableData.map(item => ({
         name: item[tableName] || 'Unknown',
-        impressions: parseFloat(item.Impression) || 0,
-        ctr: parseFloat(item.CTR?.replace('%', '')) || 0,
-        cvr: parseFloat(item.CVR?.replace('%', '')) || 0,
-        cpa: parseFloat(item.CPA) || 0,
-        cost: parseFloat(item.Cost) || 0,
-        revenue: parseFloat(item.Revenue) || 0,
-        clicks: parseFloat(item.Click) || 0,
-        purchases: parseFloat(item.Purchase) || 0
+        impressions: parseFloat(item.impressions) || 0,
+        ctr: parseFloat(item.ctr?.replace('%', '')) || 0,
+        cvr: parseFloat(item.cvr?.replace('%', '')) || 0,
+        cpa: parseFloat(item.cpa) || 0,
+        cost: parseFloat(item.cost) || 0,
+        revenue: parseFloat(item.revenue) || 0,
+        clicks: parseFloat(item.clicks) || 0,
+        purchases: parseFloat(item.orders) || 0
       }));
 
       return `## ${tableName} Performance Dataset (${tableData.length} entities)
@@ -531,7 +531,7 @@ const generateColumnMapping = async (columns) => {
   if (!process.env.OPENAI_API_KEY) {
     return generateSimpleMapping(columns);
   }
-  const prompt = `다음 컬럼명들을 표준 마케팅 데이터 컬럼에 매핑해주세요:\n\n입력 컬럼: ${columns.join(', ')}\n표준 컬럼: Date, Campaign, Ad Set, Ad, Cost, Impression, Click, Purchase, Revenue\n\n각 입력 컬럼을 가장 적절한 표준 컬럼에 매핑하고, 확신도(0-1)를 함께 제공해주세요.\n매핑이 어려운 컬럼은 unmapped에 포함시키고, 애매한 경우 suggestions에 대안을 제공해주세요.\n\n다음 JSON 형태로만 응답해주세요 (다른 텍스트 없이):\n{\n  "mapping": {\n    "사용자컬럼": "표준컬럼"\n  },\n  "confidence": {\n    "사용자컬럼": 0.95\n  },\n  "unmapped": ["매핑되지않은컬럼"],\n  "suggestions": {\n    "애매한컬럼": ["대안1", "대안2"]\n  }\n}`;
+  const prompt = `다음 컬럼명들을 표준 마케팅 데이터 컬럼에 매핑해주세요:\n\n입력 컬럼: ${columns.join(', ')}\n표준 컬럼: account_name, account_id, date, campaign_name, campaign_id, ad_pack_name, ad_pack_id, ad_name, ad_id, platform, objective, age, gender, impressions, clicks, link_clicks, cost, reach, views, installs, orders, revenue, engagements, content_views, content_views_all\n\n각 입력 컬럼을 가장 적절한 표준 컬럼에 매핑하고, 확신도(0-1)를 함께 제공해주세요.\n매핑이 어려운 컬럼은 unmapped에 포함시키고, 애매한 경우 suggestions에 대안을 제공해주세요.\n\n다음 JSON 형태로만 응답해주세요 (다른 텍스트 없이):\n{\n  "mapping": {\n    "사용자컬럼": "표준컬럼"\n  },\n  "confidence": {\n    "사용자컬럼": 0.95\n  },\n  "unmapped": ["매핑되지않은컬럼"],\n  "suggestions": {\n    "애매한컬럼": ["대안1", "대안2"]\n  }\n}`;
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [{ role: "user", content: prompt }],
@@ -550,7 +550,12 @@ const generateColumnMapping = async (columns) => {
 
 // Simple column mapping fallback
 const generateSimpleMapping = (columns) => {
-  const standardColumns = ['Date', 'Campaign', 'Ad Set', 'Ad', 'Cost', 'Impression', 'Click', 'Purchase', 'Revenue'];
+  const standardColumns = [
+    'account_name', 'account_id', 'date', 'campaign_name', 'campaign_id', 
+    'ad_pack_name', 'ad_pack_id', 'ad_name', 'ad_id', 'platform', 'objective', 
+    'age', 'gender', 'impressions', 'clicks', 'link_clicks', 'cost', 'reach', 'views', 
+    'installs', 'orders', 'revenue', 'engagements', 'content_views', 'content_views_all'
+  ];
   const mapping = {};
   const confidence = {};
   const unmapped = [];
@@ -560,33 +565,66 @@ const generateSimpleMapping = (columns) => {
     let bestMatch = null;
     let bestScore = 0;
     
-    // 간단한 키워드 매칭
-    if (lowerCol.includes('date') || lowerCol.includes('time') || lowerCol.includes('day')) {
-      bestMatch = 'Date';
-      bestScore = 0.8;
-    } else if (lowerCol.includes('campaign')) {
-      bestMatch = 'Campaign';
+    // 간단한 키워드 매칭 - 새로운 컬럼 구조에 맞게 수정
+    if (lowerCol.includes('account') && lowerCol.includes('name')) {
+      bestMatch = 'account_name';
       bestScore = 0.9;
-    } else if (lowerCol.includes('adset') || lowerCol.includes('ad set') || lowerCol.includes('ad_set')) {
-      bestMatch = 'Ad Set';
+    } else if (lowerCol.includes('account') && lowerCol.includes('id')) {
+      bestMatch = 'account_id';
       bestScore = 0.9;
-    } else if (lowerCol.includes('ad') && !lowerCol.includes('adset')) {
-      bestMatch = 'Ad';
+    } else if (lowerCol.includes('date') || lowerCol.includes('time') || lowerCol.includes('day')) {
+      bestMatch = 'date';
       bestScore = 0.8;
+    } else if (lowerCol.includes('campaign') && lowerCol.includes('name')) {
+      bestMatch = 'campaign_name';
+      bestScore = 0.9;
+    } else if (lowerCol.includes('campaign') && lowerCol.includes('id')) {
+      bestMatch = 'campaign_id';
+      bestScore = 0.9;
+    } else if (lowerCol.includes('campaign') && !lowerCol.includes('id')) {
+      bestMatch = 'campaign_name';
+      bestScore = 0.8;
+    } else if (lowerCol.includes('adset') || lowerCol.includes('ad set') || lowerCol.includes('ad_set') || lowerCol.includes('ad pack')) {
+      bestMatch = 'ad_pack_name';
+      bestScore = 0.9;
+    } else if (lowerCol.includes('ad') && !lowerCol.includes('adset') && !lowerCol.includes('ad set') && !lowerCol.includes('ad pack')) {
+      bestMatch = 'ad_name';
+      bestScore = 0.8;
+    } else if (lowerCol.includes('platform')) {
+      bestMatch = 'platform';
+      bestScore = 0.9;
+    } else if (lowerCol.includes('objective')) {
+      bestMatch = 'objective';
+      bestScore = 0.9;
+    } else if (lowerCol.includes('age')) {
+      bestMatch = 'age';
+      bestScore = 0.9;
+    } else if (lowerCol.includes('gender')) {
+      bestMatch = 'gender';
+      bestScore = 0.9;
     } else if (lowerCol.includes('cost') || lowerCol.includes('spend') || lowerCol.includes('amount')) {
-      bestMatch = 'Cost';
+      bestMatch = 'cost';
       bestScore = 0.8;
     } else if (lowerCol.includes('impression') || lowerCol.includes('reach') || lowerCol.includes('view')) {
-      bestMatch = 'Impression';
+      bestMatch = 'impressions';
       bestScore = 0.8;
     } else if (lowerCol.includes('click')) {
-      bestMatch = 'Click';
+      bestMatch = 'clicks';
       bestScore = 0.9;
     } else if (lowerCol.includes('purchase') || lowerCol.includes('conversion') || lowerCol.includes('order')) {
-      bestMatch = 'Purchase';
+      bestMatch = 'orders';
       bestScore = 0.8;
     } else if (lowerCol.includes('revenue') || lowerCol.includes('sales') || lowerCol.includes('income')) {
-      bestMatch = 'Revenue';
+      bestMatch = 'revenue';
+      bestScore = 0.8;
+    } else if (lowerCol.includes('install')) {
+      bestMatch = 'installs';
+      bestScore = 0.8;
+    } else if (lowerCol.includes('engagement')) {
+      bestMatch = 'engagements';
+      bestScore = 0.8;
+    } else if (lowerCol.includes('content') && lowerCol.includes('view')) {
+      bestMatch = 'content_views';
       bestScore = 0.8;
     }
     
@@ -612,6 +650,9 @@ const generatePivotTables = (data, columnMapping) => {
     throw new Error('No data provided for pivot table generation');
   }
 
+  console.log('🔍 generatePivotTables: Input data length:', data.length);
+  console.log('🔍 generatePivotTables: Column mapping:', columnMapping);
+
   // Remap columns based on mapping
   const remappedData = data.map(row => {
     const newRow = {};
@@ -623,54 +664,65 @@ const generatePivotTables = (data, columnMapping) => {
     return newRow;
   });
 
-  const levels = ['Campaign', 'Ad Set', 'Ad'];
+  console.log('🔍 generatePivotTables: Remapped data sample:', remappedData[0]);
+
+  // 새로운 컬럼 구조에 맞게 수정
+  const levels = [
+    { key: 'campaign_name', display: 'Campaign' },
+    { key: 'ad_pack_name', display: 'Ad Set' },
+    { key: 'ad_name', display: 'Ad' }
+  ];
+  
   const results = {};
   
   levels.forEach(level => {
-    if (!remappedData[0] || !remappedData[0][level]) {
-      console.warn(`Column '${level}' not found in data, skipping`);
+    if (!remappedData[0] || !remappedData[0][level.key]) {
+      console.warn(`Column '${level.key}' not found in data, skipping`);
       return; // Skip this level entirely instead of adding empty array
     }
 
     const grouped = remappedData.reduce((acc, row) => {
-      const key = row[level] || 'Unknown';
+      const key = row[level.key] || 'Unknown';
       if (!acc[key]) {
         acc[key] = {
-          impression: 0,
-          click: 0,
-          purchase: 0,
+          impressions: 0,
+          clicks: 0,
+          orders: 0,
           cost: 0,
           revenue: 0
         };
       }
       
-      acc[key].impression += parseFloat(row.Impression || 0);
-      acc[key].click += parseFloat(row.Click || 0);
-      acc[key].purchase += parseFloat(row.Purchase || 0);
-      acc[key].cost += parseFloat(row.Cost || 0);
-      acc[key].revenue += parseFloat(row.Revenue || 0);
+      // 새로운 컬럼명에 맞게 수정
+      acc[key].impressions += parseFloat(row.impressions || row.Impression || 0);
+      acc[key].clicks += parseFloat(row.clicks || row.Click || 0);
+      acc[key].orders += parseFloat(row.orders || row.Purchase || 0);
+      acc[key].cost += parseFloat(row.cost || row.Cost || 0);
+      acc[key].revenue += parseFloat(row.revenue || row.Revenue || 0);
       
       return acc;
     }, {});
     
     const levelData = Object.entries(grouped).map(([name, metrics]) => ({
-      [level]: name,
-      Impression: Math.round(metrics.impression),
-      CTR: metrics.impression ? (metrics.click / metrics.impression * 100).toFixed(2) + '%' : '0%',
-      Click: Math.round(metrics.click),
-      Purchase: Math.round(metrics.purchase),
-      CVR: metrics.click ? (metrics.purchase / metrics.click * 100).toFixed(2) + '%' : '0%',
-      Cost: metrics.cost.toFixed(2),
-      CPA: metrics.purchase ? (metrics.cost / metrics.purchase).toFixed(2) : '0',
-      Revenue: metrics.revenue.toFixed(2)
-    })).sort((a, b) => b.Impression - a.Impression);
+      [level.display]: name,
+      impressions: Math.round(metrics.impressions),
+      ctr: metrics.impressions ? (metrics.clicks / metrics.impressions * 100).toFixed(2) + '%' : '0%',
+      clicks: Math.round(metrics.clicks),
+      orders: Math.round(metrics.orders),
+      cvr: metrics.clicks ? (metrics.orders / metrics.clicks * 100).toFixed(2) + '%' : '0%',
+      cost: metrics.cost.toFixed(2),
+      cpa: metrics.orders ? (metrics.cost / metrics.orders).toFixed(2) : '0',
+      revenue: metrics.revenue.toFixed(2)
+    })).sort((a, b) => b.impressions - a.impressions);
     
     // Only add to results if there's actual data
     if (levelData.length > 0) {
-      results[level] = levelData;
+      results[level.display] = levelData;
+      console.log(`✅ Generated pivot table for ${level.display}: ${levelData.length} items`);
     }
   });
   
+  console.log('🔍 generatePivotTables: Final results keys:', Object.keys(results));
   return results;
 };
 
@@ -2316,7 +2368,7 @@ const generateColumnMappingForDataset = (datasetId) => {
   const mappings = {
     'campaign_data': {
       campaign: 'campaign_name',
-      spend: 'spend',
+      spend: 'cost',
       impressions: 'impressions',
       clicks: 'clicks',
       ctr: 'ctr',
@@ -2326,15 +2378,16 @@ const generateColumnMappingForDataset = (datasetId) => {
       status: 'campaign_status'
     },
     'adpack_data': {
-      campaign: 'campaign_id',
-      ad: 'ad_name',
-      spend: 'spend',
+      campaign: 'campaign_name',
+      adpack_id: 'ad_pack_id',
+      ad_name: 'ad_name',
+      spend: 'cost',
       impressions: 'impressions',
       clicks: 'clicks',
       ctr: 'ctr',
       cpc: 'cpc',
       cpm: 'cpm',
-      conversions: 'conversions',
+      conversions: 'orders',
       status: 'ad_status'
     }
   };
@@ -2463,14 +2516,14 @@ const analyzeCampaigns = async (fileData, columnMapping) => {
   if (!process.env.OPENAI_API_KEY) {
     return {
       success: false,
-      error: 'OpenAI API key not configured'
+      error: 'OpenAI API 키가 설정되지 않았습니다'
     };
   }
 
   try {
     // 1단계: 캠페인 컬럼 찾기 (매핑이 없으면 유추)
     let campaignColumn = Object.keys(columnMapping).find(key => 
-      columnMapping[key] === 'Campaign'
+      columnMapping[key] === 'campaign_name'
     );
 
     // 매핑이 없으면 컬럼명으로 유추
@@ -2489,7 +2542,7 @@ const analyzeCampaigns = async (fileData, columnMapping) => {
     if (!campaignColumn) {
       return {
         success: false,
-        error: 'No campaign column found in data'
+        error: '데이터에서 캠페인 컬럼을 찾을 수 없습니다'
       };
     }
 
@@ -2572,6 +2625,25 @@ const analyzeCampaigns = async (fileData, columnMapping) => {
           // 4. "지역", "타게팅" 제거
           cleaned = cleaned.replace(/지역/g, '').replace(/타게팅/g, '').trim();
           
+          // 새로운 전처리 단계들 추가
+          
+          // 1. "동영상", "사진", "랜딩변경"이라는 글자 없애기
+          cleaned = cleaned.replace(/동영상|사진|랜딩변경/g, '').trim();
+          
+          // 2. 숫자 또는 공백 또는 괄호로만 이루어진 element 삭제
+          if (/^[\d\s\(\)]+$/.test(cleaned)) {
+            return;
+          }
+          
+          // 3. ">"가 2개 이상 등장하는 경우에는 첫 번째 ">" 앞의 글자들만 남기기
+          const gtCount = (cleaned.match(/>/g) || []).length;
+          if (gtCount >= 2) {
+            const firstGtIndex = cleaned.indexOf('>');
+            if (firstGtIndex !== -1) {
+              cleaned = cleaned.substring(0, firstGtIndex).trim();
+            }
+          }
+          
           // 빈 문자열이 아니면 추가
           if (cleaned.trim() !== '') {
             processed.push(cleaned.trim());
@@ -2588,7 +2660,7 @@ const analyzeCampaigns = async (fileData, columnMapping) => {
     if (processedCampaignNames.length === 0) {
       return {
         success: false,
-        error: 'No valid campaign names found after preprocessing'
+        error: '전처리 후 유효한 캠페인명을 찾을 수 없습니다'
       };
     }
 
@@ -2596,42 +2668,48 @@ const analyzeCampaigns = async (fileData, columnMapping) => {
     console.log(`🔍 Processed campaign names:`, processedCampaignNames);
     console.log(`🔍 Analyzing ${processedCampaignNames.length} processed terms to identify single brand/product:`, processedCampaignNames);
 
-    const prompt = `You are a marketing data analyst with access to current information. Your task is to identify the SINGLE brand and product from a list of processed campaign terms.
+    const prompt = `당신은 현재 정보에 접근할 수 있는 마케팅 데이터 분석가입니다. 처리된 캠페인 용어 목록에서 단일 브랜드와 제품을 식별하는 것이 당신의 임무입니다.
 
-IMPORTANT: This file contains campaigns for ONE BRAND and ONE PRODUCT only. The terms below have been preprocessed to remove marketing jargon and common terms.
+중요: 이 파일에는 하나의 브랜드와 하나의 제품에 대한 캠페인만 포함되어 있습니다. 아래 용어들은 마케팅 전문용어와 일반적인 용어를 제거하여 전처리되었습니다.
 
-ANALYSIS RULES:
-- SEARCH for real, existing companies and brands using your knowledge
-- Look for patterns across all terms to identify the single brand
-- Identify the single product/service being advertised
-- Use web search knowledge to verify companies exist
-- For Korean/Asian companies, provide English brand names when possible
-- If you cannot identify a specific brand, infer the industry/category based on remaining terms
+분석 규칙:
+- 당신의 지식을 사용하여 실제 존재하는 회사와 브랜드를 검색하세요
+- 모든 용어에서 패턴을 찾아 단일 브랜드를 식별하세요
+- 광고되고 있는 단일 제품/서비스를 식별하세요
+- 웹 검색 지식을 사용하여 회사가 존재하는지 확인하세요
+- 한국/아시아 회사의 경우 가능하면 영어 브랜드명을 제공하세요
+- 특정 브랜드를 식별할 수 없는 경우, 남은 용어를 기반으로 업계/카테고리를 추론하세요
 
-SEARCH REQUIREMENTS:
-- Actively search for and verify the existence of companies mentioned
-- Use your knowledge of current companies and brands
-- For Korean brands, search for their English equivalents
-- Be thorough in your search - these terms likely represent real companies
+타겟 오디언스 분석 시 고려사항:
+- "최저가도전", "할인", "특가", "프로모션" 등의 가격 관련 키워드가 있다면 가격 민감한 소비자층을 고려하세요
+- "부산", "서울", "미국", "대한민국" 등의 지역명이 있다면 해당 지역의 소비자 특성을 반영하세요
+- 지역명과 함께 나타나는 키워드들을 종합하여 지역별 소비 패턴을 분석하세요
 
-EXAMPLES:
-- Terms: ["닥터디퍼런트", "브랜드"] 
-  → Search: "Dr. Different" (Korean skincare brand) → Single Brand: "Dr. Different", Single Product: "Skincare products"
+검색 요구사항:
+- 언급된 회사의 존재를 적극적으로 검색하고 확인하세요
+- 현재 회사와 브랜드에 대한 지식을 사용하세요
+- 한국 브랜드의 경우 영어 동등어를 검색하세요
+- 철저하게 검색하세요 - 이 용어들은 실제 회사를 나타낼 가능성이 높습니다
 
-- Terms: ["디맨드젠", "마케팅"] 
-  → Search: "DemandGen" (marketing company) → Single Brand: "DemandGen", Single Product: "Marketing services"
+예시:
+- 용어: ["나이키", "Nike", "브랜드"] 
+  → 검색: "Nike" (글로벌 스포츠웨어 브랜드) → 단일 브랜드: "Nike", 단일 제품: "스포츠웨어"
 
-Processed campaign terms to analyze:
+분석할 처리된 캠페인 용어:
 ${processedCampaignNames.map((name, index) => `${index + 1}. ${name}`).join('\n')}
 
-Provide your analysis in the following JSON format ONLY (no other text):
+다음 JSON 형식으로만 분석을 제공하세요 (다른 텍스트 없이):
 {
-  "brand": "identified single brand name or 'Unknown Brand'",
-  "product": "identified single product/service or 'General Campaign'",
-  "industry": "industry category",
-  "target_audience": "target audience if evident",
+  "brand": "식별된 단일 브랜드명 또는 '알 수 없는 브랜드'",
+  "product": "식별된 구체적인 제품명 (예: '피부 진정 크림', '미백 에센스', '보습 로션' 등)",
+  "industry": "업계 카테고리",
+  "target_audience": {
+    "demographics": "연령대와 성별 (예: '20-40대 여성', '30-50대 남성')",
+    "characteristics": "아주 구체적인 소비자 특징 (가격 민감도, 지역 특성, 라이프스타일 등 포함)",
+  },
   "confidence": 0.9,
-  "description": "Brief but detailed description of the brand and product (2-3 sentences)",
+  "description": "브랜드와 제품에 대한 간결하지만 상세한 설명 (2-3문장)",
+  "analysis_reason": "타겟 오디언스 분석 근거 (브랜드 특성과 제품 특성을 고려한 상세한 설명, 가격 정책과 지역 특성 포함)",
   "total_campaigns": ${rawCampaignNames.length}
 }`;
 
@@ -2640,7 +2718,7 @@ Provide your analysis in the following JSON format ONLY (no other text):
       messages: [
         {
           role: "system",
-          content: "You are a marketing data analyst with extensive knowledge of global brands and companies. You have access to current information and can search for real companies. Your task is to actively search for and identify real brands and products from the provided terms. These terms have been preprocessed and likely represent actual company names or products. Use your search capabilities to verify companies exist, especially Korean and Asian brands. Always provide English brand names when possible. Be thorough in your search - these are likely real companies that should be identifiable."
+          content: "당신은 글로벌 브랜드와 회사에 대한 광범위한 지식을 가진 마케팅 데이터 분석가입니다. 현재 정보에 접근할 수 있고 실제 회사를 검색할 수 있습니다. 당신의 임무는 제공된 용어에서 실제 브랜드와 제품을 적극적으로 검색하고 식별하는 것입니다. 이 용어들은 전처리되었으며 실제 회사명이나 제품을 나타낼 가능성이 높습니다. 회사가 존재하는지 확인하기 위해 검색 기능을 사용하세요, 특히 한국과 아시아 브랜드의 경우. 가능하면 항상 영어 브랜드명을 제공하세요. 철저하게 검색하세요 - 이들은 식별 가능해야 하는 실제 회사일 가능성이 높습니다."
         },
         {
           role: "user",
@@ -2667,20 +2745,25 @@ Provide your analysis in the following JSON format ONLY (no other text):
       
       // Fallback: create basic analysis
       analysisResult = {
-        brand: "Unknown Brand",
-        product: "General Campaign",
-        industry: "Unknown",
-        target_audience: "Unknown",
+        brand: "알 수 없는 브랜드",
+        product: "일반 캠페인",
+        industry: "알 수 없음",
+        target_audience: {
+          demographics: "일반 소비자",
+          characteristics: "해당 제품/서비스에 관심이 있는 고객",
+          lifestyle: "일반적인 소비 패턴"
+        },
         confidence: 0.5,
-        description: "Unable to identify specific brand and product from campaign names.",
+        description: "캠페인명에서 특정 브랜드와 제품을 식별할 수 없습니다.",
+        analysis_reason: "브랜드 정보가 충분하지 않아 일반적인 타겟 오디언스로 분석되었습니다.",
         total_campaigns: rawCampaignNames.length
       };
     }
 
     // Validate and clean up the analysis
     if (!analysisResult.brand || !analysisResult.product) {
-      console.error('❌ Invalid analysis structure');
-      throw new Error('Invalid analysis structure from LLM');
+      console.error('❌ 잘못된 분석 구조');
+      throw new Error('LLM에서 잘못된 분석 구조가 반환되었습니다');
     }
 
     console.log('✅ Campaign analysis completed:', {
@@ -2700,7 +2783,7 @@ Provide your analysis in the following JSON format ONLY (no other text):
     console.error('❌ Campaign analysis failed:', error);
     return {
       success: false,
-      error: 'Failed to analyze campaigns',
+      error: '캠페인 분석에 실패했습니다',
       details: error.message
     };
   }

@@ -189,6 +189,9 @@ const Analysis = () => {
     setStep(3);
     setError(null);
     
+    console.log('🔍 Analysis.js: executeAnalysis called with mapping:', confirmedMapping);
+    console.log('🔍 Analysis.js: mappingResult state:', mappingResult);
+    
     try {
       console.log('🚀 === STEP 1: EXECUTING ANALYSIS ===');
       console.log('🔗 API URL:', process.env.REACT_APP_API_URL || 'http://localhost:3001');
@@ -879,6 +882,7 @@ const Analysis = () => {
             mappingResult={mappingResult}
             onConfirm={executeAnalysis}
             loading={loading}
+            isMainPage={true}
           />
 
           {/* Analysis Results */}

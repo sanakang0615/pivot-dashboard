@@ -122,12 +122,12 @@ export const config = {
   // Column Mapping Patterns
   columnMappings: {
     campaign: ['campaign', 'camp', 'campaign name', 'campaign_name'],
-    adGroup: ['ad group', 'adgroup', 'ad_group', 'group', 'ad set', 'adset'],
+    adGroup: ['ad group', 'adgroup', 'ad_group', 'group', 'ad set', 'adset', 'ad_pack_name'],
     creative: ['creative', 'ad', 'creative name', 'ad name', 'creative_name', 'ad_name'],
     spend: ['spend', 'cost', 'budget', 'amount', 'investment'],
     impressions: ['impression', 'impressions', 'impr', 'views', 'imp', 'reach'],
     clicks: ['click', 'clicks', 'link clicks', 'link_clicks'],
-    conversions: ['conversion', 'conversions', 'conv', 'purchase', 'purchases', 'sales'],
+    conversions: ['conversion', 'conversions', 'conv', 'purchase', 'purchases', 'sales', 'orders'],
     date: ['date', 'day', 'timestamp', 'created_date', 'report_date']
   },
 

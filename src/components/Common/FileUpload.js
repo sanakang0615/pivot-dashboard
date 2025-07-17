@@ -440,6 +440,7 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
           mappingResult={mappingResult}
           onConfirm={executeAnalysis}
           loading={loading}
+          isMainPage={false}
         />
 
         {/* 4th Step: Analysis Complete */}

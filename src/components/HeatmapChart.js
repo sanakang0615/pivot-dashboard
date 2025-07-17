@@ -67,7 +67,7 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
     
     // 데이터 준비
     const campaigns = safeData.slice(0, 10); // 상위 10개만 표시
-    const metrics = ['CTR', 'CVR', 'CPA'];
+    const metrics = ['ctr', 'cvr', 'cpa'];
     
     if (campaigns.length === 0) return;
     
@@ -84,7 +84,7 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
     metrics.forEach(metric => {
       const values = campaigns.map(c => {
         const value = parseFloat(c[metric]) || 0;
-        return metric === 'CPA' ? (value === 0 ? 1000 : value) : value; // CPA는 낮을수록 좋음
+        return metric === 'cpa' ? (value === 0 ? 1000 : value) : value; // CPA는 낮을수록 좋음
       });
       maxValues[metric] = Math.max(...values);
       minValues[metric] = Math.min(...values);
@@ -100,7 +100,7 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
         let value = parseFloat(campaign[metric]) || 0;
         let normalizedValue;
         
-        if (metric === 'CPA') {
+        if (metric === 'cpa') {
           // CPA는 낮을수록 좋으므로 반전
           normalizedValue = value === 0 ? 0 : 1 - ((value - minValues[metric]) / (maxValues[metric] - minValues[metric]));
         } else {
@@ -131,7 +131,7 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
         let displayValue = campaign[metric];
         if (typeof displayValue === 'string' && displayValue.includes('%')) {
           displayValue = displayValue;
-        } else if (metric === 'CPA') {
+        } else if (metric === 'cpa') {
           displayValue = '$' + parseFloat(value).toFixed(2);
         } else {
           displayValue = parseFloat(value).toFixed(2);
@@ -160,7 +160,8 @@ const HeatmapChart = forwardRef(({ data, title = "성과 히트맵" }, ref) => {
     
     metrics.forEach((metric, index) => {
       const x = startX + index * cellWidth + cellWidth/2;
-      ctx.fillText(metric, x - 1, startY - 10);
+      const displayMetric = metric.toUpperCase(); // 표시용으로 대문자로 변환
+      ctx.fillText(displayMetric, x - 1, startY - 10);
     });
     
     // 범례

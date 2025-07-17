@@ -8,7 +8,7 @@ export const getDatasetInfo = (datasetId) => {
       icon: '📊',
       expectedColumns: [
         'campaign_id', 'campaign_name', 'campaign_status', 'budget', 
-        'spend', 'impressions', 'clicks', 'ctr', 'cpc', 'cpm'
+        'spend', 'impressions', 'clicks', 'link_clicks', 'ctr', 'cpc', 'cpm'
       ]
     },
     'adpack_data': {
@@ -18,7 +18,7 @@ export const getDatasetInfo = (datasetId) => {
       icon: '📈',
       expectedColumns: [
         'adpack_id', 'campaign_id', 'ad_name', 'ad_status', 
-        'spend', 'impressions', 'clicks', 'ctr', 'cpc', 'cpm', 'conversions'
+        'spend', 'impressions', 'clicks', 'link_clicks', 'ctr', 'cpc', 'cpm', 'orders'
       ]
     }
   };

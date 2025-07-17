@@ -1999,7 +1999,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
                     color: '#1e293b',
                     fontWeight: '600'
                   }}>
-                    {formatNumber(row.Impression || row.impression || 0)}
+                    {formatNumber(row.impressions || row.Impression || 0)}
                   </td>
                   <td style={{
                     textAlign: 'right',
@@ -2007,7 +2007,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
                     color: '#1e293b',
                     fontWeight: '600'
                   }}>
-                    {row.CTR || row.ctr || '0%'}
+                    {row.ctr || row.CTR || '0%'}
                   </td>
                   <td style={{
                     textAlign: 'right',
@@ -2015,7 +2015,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
                     color: '#1e293b',
                     fontWeight: '600'
                   }}>
-                    {formatNumber(row.Purchase || row.purchase || 0)}
+                    {formatNumber(row.orders || row.Purchase || 0)}
                   </td>
                 </tr>
               ))}
