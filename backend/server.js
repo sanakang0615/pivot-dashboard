@@ -9,7 +9,8 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const { processDataWithGemini, generateWeeklyReportWithGemini, generateTimeBasedAnalysisWithGemini } = require('./utils/geminiProcessor');
 const OpenAI = require("openai");
-const parquet = require('parquetjs');
+const { ParquetReader } = require('parquetjs-lite');
+const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -212,7 +213,7 @@ const processExcel = (buffer) => {
   }
 };
 
-// Parquet 파일 읽기 함수 - parquetjs 사용
+// Parquet 파일을 CSV로 변환하여 읽기 함수
 const readParquetDataset = async (datasetId) => {
   try {
     console.log(`📊 Reading parquet dataset: ${datasetId}`);
@@ -235,45 +236,73 @@ const readParquetDataset = async (datasetId) => {
     if (!fs.existsSync(config.file)) {
       throw new Error(`Dataset file not found: ${config.file}`);
     }
-    console.log(`📁 Reading parquet file: ${config.file}`);
-    // parquetjs를 사용하여 parquet 파일 읽기
-    const reader = await parquet.ParquetReader.openFile(config.file);
-    const cursor = reader.getCursor();
-    const rows = [];
-    let record = null;
-    // 모든 레코드 읽기
-    while (record = await cursor.next()) {
-      // BigInt 등의 특수 타입을 일반 타입으로 변환
-      const convertedRecord = {};
-      for (const [key, value] of Object.entries(record)) {
-        if (typeof value === 'bigint') {
-          convertedRecord[key] = Number(value);
-        } else if (value instanceof Date) {
-          convertedRecord[key] = value.toISOString();
-        } else {
-          convertedRecord[key] = value;
+    console.log(`📁 Converting parquet file to CSV: ${config.file}`);
+    // Create temporary CSV file path
+    const tempCsvPath = path.join(__dirname, 'data', `temp_${datasetId}_${Date.now()}.csv`);
+    try {
+      // Read parquet file and convert to CSV
+      const reader = await ParquetReader.openFile(config.file);
+      const cursor = reader.getCursor();
+      const rows = [];
+      let record = null;
+      // Read all records from parquet
+      while (record = await cursor.next()) {
+        // Convert BigInt and other special types to regular types
+        const convertedRecord = {};
+        for (const [key, value] of Object.entries(record)) {
+          if (typeof value === 'bigint') {
+            convertedRecord[key] = Number(value);
+          } else if (value instanceof Date) {
+            convertedRecord[key] = value.toISOString();
+          } else {
+            convertedRecord[key] = value;
+          }
         }
+        rows.push(convertedRecord);
       }
-      rows.push(convertedRecord);
+      await reader.close();
+      if (rows.length === 0) {
+        throw new Error('No data found in parquet file');
+      }
+      const columns = Object.keys(rows[0]);
+      // Create CSV writer
+      const csvWriter = createCsvWriter({
+        path: tempCsvPath,
+        header: columns.map(column => ({ id: column, title: column }))
+      });
+      // Write data to CSV
+      await csvWriter.writeRecords(rows);
+      console.log(`✅ Parquet converted to CSV: ${tempCsvPath}`);
+      // Read the CSV file using existing CSV processing logic
+      const csvBuffer = fs.readFileSync(tempCsvPath);
+      const processedData = await processCSV(csvBuffer);
+      // Clean up temporary CSV file
+      try {
+        fs.unlinkSync(tempCsvPath);
+        console.log(`🗑️ Temporary CSV file cleaned up: ${tempCsvPath}`);
+      } catch (cleanupError) {
+        console.warn(`⚠️ Failed to clean up temporary CSV file: ${cleanupError.message}`);
+      }
+      console.log(`📊 Dataset loaded successfully:`, {
+        datasetId,
+        fileName: config.name,
+        rowCount: processedData.length,
+        columnCount: columns.length,
+        columns: columns
+      });
+      return {
+        rows: processedData,
+        columns,
+        datasetId,
+        fileName: config.name
+      };
+    } catch (parquetError) {
+      console.error(`❌ Parquet conversion failed: ${parquetError.message}`);
+      throw new Error(`Failed to convert parquet file: ${parquetError.message}`);
     }
-    await reader.close();
-    const columns = rows[0] ? Object.keys(rows[0]) : [];
-    console.log(`📊 Dataset loaded successfully:`, {
-      datasetId,
-      fileName: config.name,
-      rowCount: rows.length,
-      columnCount: columns.length,
-      columns: columns
-    });
-    return {
-      rows,
-      columns,
-      datasetId,
-      fileName: config.name
-    };
   } catch (error) {
     console.error(`❌ Error reading parquet dataset ${datasetId}:`, error);
-    // 더 구체적인 에러 메시지 제공
+    // More specific error messages
     if (error.code === 'ENOENT') {
       throw new Error(`Parquet file not found: ${error.path}`);
     } else if (error.message && error.message.includes('Invalid parquet file')) {
@@ -2138,42 +2167,42 @@ app.post('/api/datasets/process', async (req, res) => {
         error: 'Invalid dataset ID'
       });
     }
-    // Check if file exists
-    if (!fs.existsSync(config.file)) {
-      return res.status(404).json({
-        success: false,
-        error: 'Dataset file not found'
-      });
-    }
-    // parquetjs로 대체 (DuckDB 완전 제거)
     let rows = [];
     let columns = [];
-    try {
-      const reader = await parquet.ParquetReader.openFile(config.file);
-      const cursor = reader.getCursor();
-      let record = null;
-      while (record = await cursor.next()) {
-        // BigInt 등의 특수 타입을 일반 타입으로 변환
-        const convertedRecord = {};
-        for (const [key, value] of Object.entries(record)) {
-          if (typeof value === 'bigint') {
-            convertedRecord[key] = Number(value);
-          } else if (value instanceof Date) {
-            convertedRecord[key] = value.toISOString();
-          } else {
-            convertedRecord[key] = value;
+    let useMockData = false;
+    // Check if file exists
+    if (!fs.existsSync(config.file)) {
+      console.warn(`⚠️ Parquet file not found: ${config.file}, using mock data.`);
+      useMockData = true;
+    } else {
+      try {
+        const reader = await ParquetReader.openFile(config.file);
+        const cursor = reader.getCursor();
+        let record = null;
+        while (record = await cursor.next()) {
+          // BigInt 등의 특수 타입을 일반 타입으로 변환
+          const convertedRecord = {};
+          for (const [key, value] of Object.entries(record)) {
+            if (typeof value === 'bigint') {
+              convertedRecord[key] = Number(value);
+            } else if (value instanceof Date) {
+              convertedRecord[key] = value.toISOString();
+            } else {
+              convertedRecord[key] = value;
+            }
           }
+          rows.push(convertedRecord);
         }
-        rows.push(convertedRecord);
+        await reader.close();
+        columns = rows[0] ? Object.keys(rows[0]) : [];
+      } catch (err) {
+        console.error(`❌ Failed to read parquet file: ${err.message}. Using mock data.`);
+        useMockData = true;
       }
-      await reader.close();
+    }
+    if (useMockData) {
+      rows = generateMockDataForDataset(datasetId);
       columns = rows[0] ? Object.keys(rows[0]) : [];
-    } catch (err) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to read parquet file',
-        details: err.message
-      });
     }
     if (!columns.length) {
       return res.status(400).json({
@@ -2196,7 +2225,11 @@ app.post('/api/datasets/process', async (req, res) => {
       data: rows,
       ...mappingResult,
       fileId: `dataset_${datasetId}`,
-      rowCount: rows.length
+      rowCount: rows.length,
+      metadata: {
+        useMockData,
+        processedAt: new Date().toISOString()
+      }
     });
   } catch (error) {
     console.error('Error processing dataset:', error);
