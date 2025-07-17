@@ -9,8 +9,7 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const { processDataWithGemini, generateWeeklyReportWithGemini, generateTimeBasedAnalysisWithGemini } = require('./utils/geminiProcessor');
 const OpenAI = require("openai");
-const { ParquetReader } = require('parquetjs-lite');
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+const ParquetConverter = require('./utils/parquetConverter');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -213,102 +212,50 @@ const processExcel = (buffer) => {
   }
 };
 
-// Parquet 파일을 CSV로 변환하여 읽기 함수
+// 간단한 parquet 데이터셋 읽기 함수 (Python 변환 사용)
 const readParquetDataset = async (datasetId) => {
   try {
-    console.log(`📊 Reading parquet dataset: ${datasetId}`);
-    // Dataset configuration
-    const datasetConfigs = {
-      'campaign_data': {
-        name: 'Campaign Data',
-        file: path.join(__dirname, 'data/campaign_data.parquet')
-      },
-      'adpack_data': {
-        name: 'AdPack Data',
-        file: path.join(__dirname, 'data/adpack_data.parquet')
-      }
+    console.log(`📊 Reading dataset: ${datasetId}`);
+    
+    // ParquetConverter 인스턴스 생성
+    const dataDirectory = path.join(__dirname, 'data');
+    const converter = new ParquetConverter(dataDirectory);
+    
+    // Parquet을 CSV로 변환
+    const csvPath = await converter.convertParquetToCSV(datasetId);
+    
+    // 변환된 CSV 파일 읽기
+    const csvBuffer = fs.readFileSync(csvPath);
+    const processedData = await processCSV(csvBuffer);
+    
+    if (!processedData || processedData.length === 0) {
+      throw new Error('No data found in converted CSV file');
+    }
+    
+    const columns = Object.keys(processedData[0] || {});
+    
+    console.log(`📊 Dataset loaded successfully:`, {
+      datasetId,
+      rowCount: processedData.length,
+      columnCount: columns.length,
+      csvPath
+    });
+    
+    return {
+      rows: processedData,
+      columns,
+      datasetId,
+      fileName: converter.getDatasetName(datasetId)
     };
-    const config = datasetConfigs[datasetId];
-    if (!config) {
-      throw new Error(`Invalid dataset ID: ${datasetId}`);
-    }
-    // Check if file exists
-    if (!fs.existsSync(config.file)) {
-      throw new Error(`Dataset file not found: ${config.file}`);
-    }
-    console.log(`📁 Converting parquet file to CSV: ${config.file}`);
-    // Create temporary CSV file path
-    const tempCsvPath = path.join(__dirname, 'data', `temp_${datasetId}_${Date.now()}.csv`);
-    try {
-      // Read parquet file and convert to CSV
-      const reader = await ParquetReader.openFile(config.file);
-      const cursor = reader.getCursor();
-      const rows = [];
-      let record = null;
-      // Read all records from parquet
-      while (record = await cursor.next()) {
-        // Convert BigInt and other special types to regular types
-        const convertedRecord = {};
-        for (const [key, value] of Object.entries(record)) {
-          if (typeof value === 'bigint') {
-            convertedRecord[key] = Number(value);
-          } else if (value instanceof Date) {
-            convertedRecord[key] = value.toISOString();
-          } else {
-            convertedRecord[key] = value;
-          }
-        }
-        rows.push(convertedRecord);
-      }
-      await reader.close();
-      if (rows.length === 0) {
-        throw new Error('No data found in parquet file');
-      }
-      const columns = Object.keys(rows[0]);
-      // Create CSV writer
-      const csvWriter = createCsvWriter({
-        path: tempCsvPath,
-        header: columns.map(column => ({ id: column, title: column }))
-      });
-      // Write data to CSV
-      await csvWriter.writeRecords(rows);
-      console.log(`✅ Parquet converted to CSV: ${tempCsvPath}`);
-      // Read the CSV file using existing CSV processing logic
-      const csvBuffer = fs.readFileSync(tempCsvPath);
-      const processedData = await processCSV(csvBuffer);
-      // Clean up temporary CSV file
-      try {
-        fs.unlinkSync(tempCsvPath);
-        console.log(`🗑️ Temporary CSV file cleaned up: ${tempCsvPath}`);
-      } catch (cleanupError) {
-        console.warn(`⚠️ Failed to clean up temporary CSV file: ${cleanupError.message}`);
-      }
-      console.log(`📊 Dataset loaded successfully:`, {
-        datasetId,
-        fileName: config.name,
-        rowCount: processedData.length,
-        columnCount: columns.length,
-        columns: columns
-      });
-      return {
-        rows: processedData,
-        columns,
-        datasetId,
-        fileName: config.name
-      };
-    } catch (parquetError) {
-      console.error(`❌ Parquet conversion failed: ${parquetError.message}`);
-      throw new Error(`Failed to convert parquet file: ${parquetError.message}`);
-    }
+    
   } catch (error) {
-    console.error(`❌ Error reading parquet dataset ${datasetId}:`, error);
-    // More specific error messages
+    console.error(`❌ Error reading dataset ${datasetId}:`, error);
+    
+    // 더 구체적인 에러 메시지
     if (error.code === 'ENOENT') {
-      throw new Error(`Parquet file not found: ${error.path}`);
-    } else if (error.message && error.message.includes('Invalid parquet file')) {
-      throw new Error(`Invalid or corrupted parquet file: ${datasetId}`);
+      throw new Error(`Dataset file not found: ${datasetId}`);
     } else {
-      throw new Error(`Failed to read parquet file: ${error.message}`);
+      throw new Error(`Failed to read dataset: ${error.message}`);
     }
   }
 };
@@ -2137,100 +2084,60 @@ app.post('/api/datasets/process', async (req, res) => {
   try {
     const { datasetId } = req.body;
     const userId = req.headers['x-user-id'];
+    
     if (!datasetId) {
       return res.status(400).json({
         success: false,
         error: 'Dataset ID is required'
       });
     }
+    
     if (!userId) {
       return res.status(401).json({
         success: false,
         error: 'User ID is required'
       });
     }
-    // Dataset configuration
-    const datasetConfigs = {
-      'campaign_data': {
-        name: 'Campaign Data',
-        file: path.join(__dirname, 'data/campaign_data.parquet')
-      },
-      'adpack_data': {
-        name: 'AdPack Data',
-        file: path.join(__dirname, 'data/adpack_data.parquet')
-      }
-    };
-    const config = datasetConfigs[datasetId];
-    if (!config) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid dataset ID'
-      });
-    }
-    let rows = [];
-    let columns = [];
-    let useMockData = false;
-    // Check if file exists
-    if (!fs.existsSync(config.file)) {
-      console.warn(`⚠️ Parquet file not found: ${config.file}, using mock data.`);
-      useMockData = true;
-    } else {
-      try {
-        const reader = await ParquetReader.openFile(config.file);
-        const cursor = reader.getCursor();
-        let record = null;
-        while (record = await cursor.next()) {
-          // BigInt 등의 특수 타입을 일반 타입으로 변환
-          const convertedRecord = {};
-          for (const [key, value] of Object.entries(record)) {
-            if (typeof value === 'bigint') {
-              convertedRecord[key] = Number(value);
-            } else if (value instanceof Date) {
-              convertedRecord[key] = value.toISOString();
-            } else {
-              convertedRecord[key] = value;
-            }
-          }
-          rows.push(convertedRecord);
-        }
-        await reader.close();
-        columns = rows[0] ? Object.keys(rows[0]) : [];
-      } catch (err) {
-        console.error(`❌ Failed to read parquet file: ${err.message}. Using mock data.`);
-        useMockData = true;
-      }
-    }
-    if (useMockData) {
-      rows = generateMockDataForDataset(datasetId);
-      columns = rows[0] ? Object.keys(rows[0]) : [];
-    }
+
+    console.log(`[DATASET PROCESS] User ${userId} selected dataset: ${datasetId}`);
+    
+    // ParquetConverter를 사용하여 데이터 읽기
+    const dataDirectory = path.join(__dirname, 'data');
+    const converter = new ParquetConverter(dataDirectory);
+    
+    const datasetInfo = await readParquetDataset(datasetId);
+    const { rows, columns } = datasetInfo;
+    
     if (!columns.length) {
       return res.status(400).json({
         success: false,
         error: 'No columns found in dataset'
       });
     }
-    // 2. 컬럼 매핑 추천 (내부 함수 직접 호출)
+    
+    // 컬럼 매핑 추천
     let mappingResult;
     try {
       mappingResult = await generateColumnMapping(columns);
     } catch (err) {
       mappingResult = generateSimpleMapping(columns);
     }
+    
     res.json({
       success: true,
       datasetId,
-      datasetName: config.name,
+      datasetName: converter.getDatasetName(datasetId),
       columns,
-      data: rows,
+      data: rows.slice(0, 5), // 미리보기용 5행만 전송
       ...mappingResult,
       fileId: `dataset_${datasetId}`,
       rowCount: rows.length,
       metadata: {
-        useMockData,
-        processedAt: new Date().toISOString()
+        processedAt: new Date().toISOString(),
+        source: 'parquet_converted'
       }
     });
+    
   } catch (error) {
     console.error('Error processing dataset:', error);
     res.status(500).json({

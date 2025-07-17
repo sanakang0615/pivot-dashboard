@@ -16,9 +16,16 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
   ].filter(Boolean);
 
   const handleDatasetSelect = async (dataset) => {
+    console.log('[DatasetSelector] handleDatasetSelect called with:', dataset);
     if (!isSignedIn || !userId) {
       setError('Please sign in to use datasets');
       return;
+    }
+
+    // 디버깅: 어떤 파일을 불러오는지 콘솔에 출력
+    if (dataset && dataset.id) {
+      const expectedPath = `/backend/data/${dataset.id}.parquet`;
+      console.log(`[DatasetSelector] datasetId: ${dataset.id}, 예상 백엔드 파일 경로: ${expectedPath}`);
     }
 
     setSelectedDataset(dataset);

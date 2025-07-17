@@ -23,5 +23,10 @@ export const getDatasetInfo = (datasetId) => {
     }
   };
 
-  return datasetConfigs[datasetId] || null;
+  // 디버깅용 콘솔로그 추가
+  const config = datasetConfigs[datasetId] || null;
+  //console.log('[getDatasetInfo] datasetId:', datasetId, '| config:', config);
+  // NOTE: 실제 데이터 파일 경로는 프론트가 아니라 백엔드에서 관리합니다.
+  // 프론트의 이 config는 단순히 UI 표시용입니다.
+  return config;
 }; 
