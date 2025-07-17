@@ -98,26 +98,27 @@ const corsOptions = {
   maxAge: 86400
 };
 
-// CORS 미들웨어는 반드시 라우트 정의 전에!
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+// ================== 미들웨어 순서 수정 시작 ==================
 
-// Add request logging middleware
+// 1. CORS 미들웨어를 다른 모든 미들웨어와 라우트보다 먼저 배치합니다.
+// 이렇게 하면 모든 요청이 Preflight 요청을 포함하여 CORS 정책을 먼저 통과하게 됩니다.
+app.use(cors(corsOptions));
+
+// 2. 요청 로깅 미들웨어 (디버깅에 유용)
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-  console.log('Request headers:', req.headers);
   console.log('Origin:', req.headers.origin);
   next();
 });
 
-// Ensure JSON responses
-app.use((req, res, next) => {
-  res.setHeader('Content-Type', 'application/json');
-  next();
-});
-
+// 3. JSON 및 URL-encoded 바디 파서를 CORS 미들웨어 뒤에 배치합니다.
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// 참고: app.options('*', ...) 와 전역 res.setHeader('Content-Type', ...)는 제거되었습니다.
+// `cors` 미들웨어가 이 모든 것을 자동으로 더 안전하게 처리합니다.
+
+// ================== 미들웨어 순서 수정 끝 ====================
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -139,6 +140,7 @@ const upload = multer({
 });
 
 // Utility functions for data processing
+// ... (이하 모든 유틸리티 함수 및 API 라우트 코드는 기존과 동일합니다)
 const processCSV = (buffer) => {
   return new Promise((resolve, reject) => {
     Papa.parse(buffer.toString(), {
