@@ -1367,10 +1367,10 @@ const AnalysisPage = () => {
                           border: '1px solid rgba(0, 0, 0, 0.1)'
                         }}
                       />
-                      <div className="mt-2 text-sm text-gray-600 text-center">
-                        <p><span className="tossface">💡</span> <span className="pretendard">색상이 진할수록 높은 성과를 나타냅니다</span></p>
-                        <p className="pretendard">CTR/CVR: 높을수록 좋음 | CPA: 낮을수록 좋음</p>
-                      </div>
+                    <div className="mt-2 text-sm text-gray-600 text-center">
+                      <p><span className="tossface">💡</span> <span className="pretendard">Darker colors indicate better performance.</span></p>
+                      <p className="pretendard">CTR/CVR: The higher, the better | CPA: The lower, the better</p>
+                    </div>
                     </div>
                   ) : (
                     // 이미지가 없으면 로딩 상태 표시
