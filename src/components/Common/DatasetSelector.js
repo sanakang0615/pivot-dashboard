@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Database, FileText, ArrowRight, CheckCircle, Loader } from 'lucide-react';
-import { readParquetFile, getDatasetInfo } from '../../utils/parquetReader';
+import { getDatasetInfo } from '../../utils/parquetReader';
 import { useAuth } from '@clerk/clerk-react';
 
 const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
@@ -331,7 +331,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
           >
             Cancel
           </button>
-          
+          {/* Fix parquet error */}
           <button
             onClick={confirmSelection}
             disabled={!datasetInfo || loading}

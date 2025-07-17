@@ -212,7 +212,7 @@ const processExcel = (buffer) => {
   }
 };
 
-// Parquet 파일 읽기 함수
+// Parquet 파일 읽기 함수 - parquetjs 사용
 const readParquetDataset = async (datasetId) => {
   try {
     console.log(`📊 Reading parquet dataset: ${datasetId}`);
@@ -236,13 +236,25 @@ const readParquetDataset = async (datasetId) => {
       throw new Error(`Dataset file not found: ${config.file}`);
     }
     console.log(`📁 Reading parquet file: ${config.file}`);
-    // parquetjs로 파일 읽기
+    // parquetjs를 사용하여 parquet 파일 읽기
     const reader = await parquet.ParquetReader.openFile(config.file);
     const cursor = reader.getCursor();
     const rows = [];
     let record = null;
+    // 모든 레코드 읽기
     while (record = await cursor.next()) {
-      rows.push(record);
+      // BigInt 등의 특수 타입을 일반 타입으로 변환
+      const convertedRecord = {};
+      for (const [key, value] of Object.entries(record)) {
+        if (typeof value === 'bigint') {
+          convertedRecord[key] = Number(value);
+        } else if (value instanceof Date) {
+          convertedRecord[key] = value.toISOString();
+        } else {
+          convertedRecord[key] = value;
+        }
+      }
+      rows.push(convertedRecord);
     }
     await reader.close();
     const columns = rows[0] ? Object.keys(rows[0]) : [];
@@ -261,9 +273,45 @@ const readParquetDataset = async (datasetId) => {
     };
   } catch (error) {
     console.error(`❌ Error reading parquet dataset ${datasetId}:`, error);
-    throw error;
+    // 더 구체적인 에러 메시지 제공
+    if (error.code === 'ENOENT') {
+      throw new Error(`Parquet file not found: ${error.path}`);
+    } else if (error.message && error.message.includes('Invalid parquet file')) {
+      throw new Error(`Invalid or corrupted parquet file: ${datasetId}`);
+    } else {
+      throw new Error(`Failed to read parquet file: ${error.message}`);
+    }
   }
 };
+
+// 파일 존재 확인 디버깅 엔드포인트
+app.get('/api/debug/files', (req, res) => {
+  try {
+    const dataDir = path.join(__dirname, 'data');
+    const files = fs.readdirSync(dataDir);
+    const fileInfo = files.map(file => {
+      const filePath = path.join(dataDir, file);
+      const stats = fs.statSync(filePath);
+      return {
+        name: file,
+        size: stats.size,
+        path: filePath,
+        exists: fs.existsSync(filePath)
+      };
+    });
+    res.json({
+      success: true,
+      dataDirectory: dataDir,
+      files: fileInfo
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      error: error.message,
+      dataDirectory: path.join(__dirname, 'data')
+    });
+  }
+});
 
 // Simple AI insights placeholder (if Gemini API not available)
 const generateSimpleInsights = (data) => {
@@ -2060,21 +2108,18 @@ app.post('/api/datasets/process', async (req, res) => {
   try {
     const { datasetId } = req.body;
     const userId = req.headers['x-user-id'];
-
     if (!datasetId) {
       return res.status(400).json({
         success: false,
         error: 'Dataset ID is required'
       });
     }
-
     if (!userId) {
       return res.status(401).json({
         success: false,
         error: 'User ID is required'
       });
     }
-
     // Dataset configuration
     const datasetConfigs = {
       'campaign_data': {
@@ -2086,7 +2131,6 @@ app.post('/api/datasets/process', async (req, res) => {
         file: path.join(__dirname, 'data/adpack_data.parquet')
       }
     };
-
     const config = datasetConfigs[datasetId];
     if (!config) {
       return res.status(400).json({
@@ -2094,7 +2138,6 @@ app.post('/api/datasets/process', async (req, res) => {
         error: 'Invalid dataset ID'
       });
     }
-
     // Check if file exists
     if (!fs.existsSync(config.file)) {
       return res.status(404).json({
@@ -2102,32 +2145,26 @@ app.post('/api/datasets/process', async (req, res) => {
         error: 'Dataset file not found'
       });
     }
-
-    // 1. Parquet 파일에서 데이터 읽기 (DuckDB 사용)
+    // parquetjs로 대체 (DuckDB 완전 제거)
     let rows = [];
     let columns = [];
     try {
-      // const db = new duckdb.Database(':memory:');
-      // const con = db.connect();
-      // // DuckDB는 파일 경로를 직접 쿼리할 수 있음
-      // const query = `SELECT * FROM read_parquet('${config.file.replace(/'/g, "''")}')`;
-      // const result = await new Promise((resolve, reject) => {
-      //   con.all(query, (err, res) => {
-      //     if (err) reject(err);
-      //     else resolve(res);
-      //   });
-      // });
-      // // BigInt 값을 일반 숫자로 변환
-      // rows = convertBigInts(result);
-      // columns = rows[0] ? Object.keys(rows[0]) : [];
-      // con.close();
-      // db.close();
-      // 위 DuckDB 코드 제거, parquetjs로 대체
       const reader = await parquet.ParquetReader.openFile(config.file);
       const cursor = reader.getCursor();
       let record = null;
       while (record = await cursor.next()) {
-        rows.push(record);
+        // BigInt 등의 특수 타입을 일반 타입으로 변환
+        const convertedRecord = {};
+        for (const [key, value] of Object.entries(record)) {
+          if (typeof value === 'bigint') {
+            convertedRecord[key] = Number(value);
+          } else if (value instanceof Date) {
+            convertedRecord[key] = value.toISOString();
+          } else {
+            convertedRecord[key] = value;
+          }
+        }
+        rows.push(convertedRecord);
       }
       await reader.close();
       columns = rows[0] ? Object.keys(rows[0]) : [];
@@ -2138,14 +2175,12 @@ app.post('/api/datasets/process', async (req, res) => {
         details: err.message
       });
     }
-
     if (!columns.length) {
       return res.status(400).json({
         success: false,
         error: 'No columns found in dataset'
       });
     }
-
     // 2. 컬럼 매핑 추천 (내부 함수 직접 호출)
     let mappingResult;
     try {
@@ -2153,7 +2188,6 @@ app.post('/api/datasets/process', async (req, res) => {
     } catch (err) {
       mappingResult = generateSimpleMapping(columns);
     }
-
     res.json({
       success: true,
       datasetId,
@@ -2164,7 +2198,6 @@ app.post('/api/datasets/process', async (req, res) => {
       fileId: `dataset_${datasetId}`,
       rowCount: rows.length
     });
-
   } catch (error) {
     console.error('Error processing dataset:', error);
     res.status(500).json({
