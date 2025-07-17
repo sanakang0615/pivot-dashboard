@@ -89,19 +89,25 @@ const allowedOrigins = [
 app.use(cors({
   origin: function (origin, callback) {
     // allow requests with no origin (like mobile apps, curl, etc.)
+    console.log('🔍 CORS check for origin:', origin);
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('✅ CORS allowed for origin:', origin);
       return callback(null, true);
     } else {
+      console.log('❌ CORS blocked for origin:', origin);
       return callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization', 'Origin', 'Accept'],
+  allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization', 'Origin', 'Accept', 'X-Requested-With'],
   exposedHeaders: ['Content-Type', 'x-user-id'],
   maxAge: 86400
 }));
+
+// Explicitly handle OPTIONS for debugging CORS
+app.options('*', cors());
 
 // Add request logging middleware
 app.use((req, res, next) => {
