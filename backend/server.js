@@ -861,6 +861,186 @@ app.post('/api/mapping/suggest', async (req, res) => {
   }
 });
 
+// 2.1. 컬럼 그룹화 및 추천 API
+app.post('/api/mapping/group-and-recommend', async (req, res) => {
+  try {
+    const { columns, campaignContext } = req.body;
+    
+    if (!columns || !Array.isArray(columns)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Invalid columns data' 
+      });
+    }
+
+    console.log('🔍 === COLUMN GROUPING AND RECOMMENDATION ===');
+    console.log('📊 Input columns:', columns);
+    console.log('🎯 Campaign context:', campaignContext);
+
+    // 1단계: 숫자 제거하여 컬럼 그룹화
+    const groupedColumns = groupSimilarColumns(columns);
+    
+    // 2단계: LLM 기반 컬럼 추천
+    const recommendations = await generateColumnRecommendations(groupedColumns, campaignContext);
+    
+    console.log('🔍 API Response structure:');
+    console.log('  - groupedColumns:', groupedColumns);
+    console.log('  - recommendations:', recommendations);
+    console.log('  - recommendations type:', typeof recommendations);
+    
+    res.json({
+      success: true,
+      groupedColumns,
+      recommendations
+    });
+  } catch (error) {
+    console.error('Column grouping and recommendation error:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to group columns and generate recommendations',
+      details: error.message 
+    });
+  }
+});
+
+// 컬럼 그룹화 함수
+const groupSimilarColumns = (columns) => {
+  const groups = {};
+  
+  columns.forEach((column, index) => {
+    // 숫자 제거 (예: "Video played to 25%" -> "Video played to %")
+    const normalizedColumn = column.replace(/\d+/g, '');
+    
+    if (!groups[normalizedColumn]) {
+      groups[normalizedColumn] = [];
+    }
+    
+    groups[normalizedColumn].push({
+      original: column,
+      index: index
+    });
+  });
+  
+  // 그룹이 2개 이상인 것만 반환
+  const result = {};
+  Object.entries(groups).forEach(([normalized, items]) => {
+    if (items.length > 1) {
+      result[normalized] = items;
+    }
+  });
+  
+  return result;
+};
+
+// LLM 기반 컬럼 추천 함수
+const generateColumnRecommendations = async (groupedColumns, campaignContext) => {
+  if (!process.env.OPENAI_API_KEY) {
+    return generateSimpleColumnRecommendations(groupedColumns);
+  }
+
+  try {
+    const prompt = `당신은 마케팅 데이터 분석 전문가입니다. 동일한 성격의 컬럼들 중에서 가장 적합한 컬럼을 선택하는 것이 당신의 임무입니다.
+
+캠페인 컨텍스트:
+- 브랜드: ${campaignContext?.brand || '알 수 없음'}
+- 제품: ${campaignContext?.product || '알 수 없음'}
+- 업계: ${campaignContext?.industry || '알 수 없음'}
+- 타겟 오디언스: ${campaignContext?.target_audience?.demographics || '알 수 없음'}
+
+분석 규칙:
+1. 마케팅 성과 측정의 정확성과 효율성을 고려하세요
+2. 해당 브랜드/제품의 특성을 고려하세요
+3. 타겟 오디언스의 특성을 고려하세요
+4. 업계 표준과 베스트 프랙티스를 고려하세요
+
+각 그룹에서 가장 적합한 컬럼을 선택하고 근거를 제공해주세요.
+
+분석할 컬럼 그룹:
+${Object.entries(groupedColumns).map(([normalized, items]) => {
+  return `\n그룹: ${normalized}
+  컬럼들: ${items.map(item => item.original).join(', ')}`;
+}).join('\n')}
+
+다음 JSON 형식으로만 응답해주세요 (다른 텍스트 없이):
+{
+  "recommendations": [
+    {
+      "group": "그룹명",
+      "recommendedColumn": "추천 컬럼명",
+      "reason": "추천 근거 (브랜드/제품 특성을 고려한 상세한 설명)",
+      "alternatives": ["대안 컬럼1", "대안 컬럼2"]
+    }
+  ]
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 2000,
+      temperature: 0.3,
+    });
+
+    const responseText = completion.choices[0].message.content;
+    const cleanText = responseText.replace(/```json\n?|```\n?/g, '').trim();
+    
+    try {
+      const recommendations = JSON.parse(cleanText);
+      return recommendations;
+    } catch (parseError) {
+      console.error('JSON parsing failed for column recommendations:', parseError);
+      return generateSimpleColumnRecommendations(groupedColumns);
+    }
+  } catch (error) {
+    console.error('OpenAI API error for column recommendations:', error);
+    return generateSimpleColumnRecommendations(groupedColumns);
+  }
+};
+
+// 간단한 컬럼 추천 fallback
+const generateSimpleColumnRecommendations = (groupedColumns) => {
+  const recommendations = [];
+  
+  Object.entries(groupedColumns).forEach(([normalized, items]) => {
+    // 간단한 규칙 기반 추천
+    let recommendedColumn = items[0].original;
+    let reason = "첫 번째 컬럼을 기본값으로 선택했습니다.";
+    
+    // 특정 패턴에 따른 추천
+    const columnNames = items.map(item => item.original);
+    
+    // Video 관련: 100% 완료를 선호
+    if (normalized.includes('Video') && columnNames.some(col => col.includes('100%'))) {
+      recommendedColumn = columnNames.find(col => col.includes('100%')) || recommendedColumn;
+      reason = "비디오 완료율 측정에서는 100% 완료 지표가 가장 의미있는 성과 지표입니다.";
+    }
+    
+    // Conversion 관련: 짧은 기간을 선호
+    if (normalized.includes('conversion') || normalized.includes('Conversion')) {
+      const shortestPeriod = columnNames
+        .filter(col => /\d+/.test(col))
+        .sort((a, b) => {
+          const aNum = parseInt(a.match(/\d+/)[0]);
+          const bNum = parseInt(b.match(/\d+/)[0]);
+          return aNum - bNum;
+        })[0];
+      
+      if (shortestPeriod) {
+        recommendedColumn = shortestPeriod;
+        reason = "전환율 측정에서는 짧은 기간의 지표가 더 즉각적인 성과를 반영합니다.";
+      }
+    }
+    
+    recommendations.push({
+      group: normalized,
+      recommendedColumn,
+      reason,
+      alternatives: items.map(item => item.original).filter(col => col !== recommendedColumn)
+    });
+  });
+  
+  return { recommendations };
+};
+
 // 2.5. 캠페인 분석 API
 app.post('/api/analysis/campaigns', async (req, res) => {
   try {

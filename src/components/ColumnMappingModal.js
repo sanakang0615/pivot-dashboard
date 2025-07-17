@@ -11,6 +11,8 @@ const ColumnMappingModal = ({
 }) => {
   const [editedMapping, setEditedMapping] = useState({});
   const [showTip, setShowTip] = useState(false);
+  const [columnRecommendations, setColumnRecommendations] = useState(null);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   
   // 새로운 표준화된 컬럼 구조
   const standardColumns = {
@@ -65,18 +67,63 @@ const ColumnMappingModal = ({
   useEffect(() => {
     if (mappingResult?.mapping) {
       setEditedMapping(mappingResult.mapping);
-      console.log('🔍 ColumnMappingModal: Initial mapping set:', mappingResult.mapping);
+      //console.log('🔍 ColumnMappingModal: Initial mapping set:', mappingResult.mapping);
     }
   }, [mappingResult]);
 
+  // 컬럼 그룹화 및 추천 API 호출
+  const fetchColumnRecommendations = async () => {
+    if (!mappingResult?.unmapped || mappingResult.unmapped.length === 0) {
+      console.log('🔍 No unmapped columns, skipping recommendations');
+      return;
+    }
+
+    console.log('🔍 Fetching column recommendations for:', mappingResult.unmapped);
+    setLoadingRecommendations(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/mapping/group-and-recommend`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          columns: mappingResult.unmapped,
+          campaignContext: mappingResult.campaignContext
+        })
+      });
+
+      console.log('🔍 API Response status:', response.status);
+      const data = await response.json();
+      console.log('🔍 API Response data:', data);
+      
+      if (data.success) {
+        setColumnRecommendations(data);
+        console.log('🔍 Column recommendations set:', data);
+        console.log('🔍 Recommendations count:', data.recommendations?.length || 0);
+      } else {
+        console.error('🔍 API returned success: false:', data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch column recommendations:', error);
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mappingResult?.unmapped && mappingResult.unmapped.length > 0) {
+      fetchColumnRecommendations();
+    }
+  }, [mappingResult?.unmapped]);
+
   const handleMappingChange = (userColumn, standardColumn) => {
-    console.log('🔍 ColumnMappingModal: Mapping change:', { userColumn, standardColumn });
+    //console.log('🔍 ColumnMappingModal: Mapping change:', { userColumn, standardColumn });
     setEditedMapping(prev => {
       const newMapping = {
         ...prev,
         [userColumn]: standardColumn
       };
-      console.log('🔍 ColumnMappingModal: Updated mapping:', newMapping);
+      //console.log('🔍 ColumnMappingModal: Updated mapping:', newMapping);
       return newMapping;
     });
   };
@@ -88,9 +135,9 @@ const ColumnMappingModal = ({
   };
 
   const getConfidenceIcon = (confidence) => {
-    if (confidence >= 0.9) return '✅';
-    if (confidence >= 0.7) return '⚠️';
-    return '❌';
+    if (confidence >= 0.9) return <span className="tossface">✅</span>;
+    if (confidence >= 0.7) return <span className="tossface">⚠️</span>;
+    return <span className="tossface">❌</span>;
   };
 
   const handleConfirm = () => {
@@ -102,13 +149,13 @@ const ColumnMappingModal = ({
         return acc;
       }, {});
     
-    console.log('🔍 ColumnMappingModal: Final mapping to confirm:', cleanedMapping);
+    //l: Final mapping to confirm:', cleanedMapping);
     onConfirm(cleanedMapping);
   };
 
   const getMappedStandardColumns = () => {
     const mapped = Object.values(editedMapping).filter(col => col);
-    console.log('🔍 ColumnMappingModal: Mapped standard columns:', mapped);
+    //console.log('🔍 ColumnMappingModal: Mapped standard columns:', mapped);
     return mapped;
   };
 
@@ -122,7 +169,7 @@ const ColumnMappingModal = ({
     const mapped = getMappedStandardColumns();
     const requiredColumns = getRequiredColumns();
     const unmapped = requiredColumns.filter(col => !mapped.includes(col.key));
-    console.log('🔍 ColumnMappingModal: Unmapped required columns:', unmapped);
+    //console.log('🔍 ColumnMappingModal: Unmapped required columns:', unmapped);
     return unmapped;
   };
 
@@ -130,7 +177,7 @@ const ColumnMappingModal = ({
   const getMappedColumnsDetails = () => {
     const mappedKeys = getMappedStandardColumns();
     const details = getAllStandardColumns().filter(col => mappedKeys.includes(col.key));
-    console.log('🔍 ColumnMappingModal: Mapped columns details:', details);
+    //console.log('🔍 ColumnMappingModal: Mapped columns details:', details);
     return details;
   };
 
@@ -242,6 +289,105 @@ const ColumnMappingModal = ({
 
           {/* 매핑 상태 요약 */}
           <div>
+            
+
+            {/* 컬럼 추천 섹션 */}
+            {(() => {
+              console.log('🔍 Rendering recommendations section:');
+              console.log('  - columnRecommendations:', !!columnRecommendations);
+              console.log('  - recommendations:', columnRecommendations?.recommendations);
+              console.log('  - recommendations type:', typeof columnRecommendations?.recommendations);
+              console.log('  - isArray:', Array.isArray(columnRecommendations?.recommendations));
+              console.log('  - constructor:', columnRecommendations?.recommendations?.constructor?.name);
+              console.log('  - keys:', Object.keys(columnRecommendations?.recommendations || {}));
+              
+              // 안전한 배열 변환 함수
+              const getRecommendationsArray = (recs) => {
+                if (Array.isArray(recs)) return recs;
+                if (typeof recs === 'object' && recs !== null) {
+                  // recommendations 객체 안에 recommendations 배열이 있는 경우
+                  if (recs.recommendations && Array.isArray(recs.recommendations)) {
+                    return recs.recommendations;
+                  }
+                  // 객체의 값들을 배열로 변환
+                  return Object.values(recs);
+                }
+                return [];
+              };
+              
+              const recommendationsArray = getRecommendationsArray(columnRecommendations?.recommendations);
+              
+              if (recommendationsArray.length === 0) {
+                return null; // 추천이 없으면 섹션을 표시하지 않음
+              }
+              
+              return (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3 text-blue-800">Grouping Recommendation</h3>
+                  <div className="space-y-3">
+                    {recommendationsArray.map((rec, idx) => {
+                      // 해당 그룹의 묶인 컬럼들 찾기
+                      const groupedItems = columnRecommendations?.groupedColumns?.[rec.group] || [];
+                      
+                      return (
+                        <div key={idx} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                                  <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-medium text-gray-800 text-sm">
+                              {rec.group}
+                            </h4>
+                            <span className="tossface text-blue-500">→</span>
+                            <span className="text-sm font-medium text-gray-900">
+                              추천 컬럼: <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">{rec.recommendedColumn}</span>
+                            </span>
+                          </div>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                            {groupedItems.length}개
+                          </span>
+                        </div>
+                        
+                        <div className="mb-3">
+                          <p className="text-xs text-gray-700 leading-relaxed">
+                            {rec.reason}
+                          </p>
+                        </div>
+                        
+                        {/* 묶인 컬럼들 표시 */}
+                        {groupedItems.length > 0 && (
+                          <div className="mb-4">
+                            <p className="text-xs text-gray-600 mb-2">묶인 컬럼들:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {groupedItems.map((item, itemIdx) => (
+                                <span key={itemIdx} className="text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded border border-gray-300">
+                                  {item.original}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {rec.alternatives && rec.alternatives.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-xs text-gray-600 mb-2">대안 컬럼:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {rec.alternatives.map((alt, altIdx) => (
+                                <span key={altIdx} className="text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded border border-gray-300">
+                                  {alt}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+
+
             <h3 className="text-lg font-semibold mb-2">Unmapped Columns</h3>
 
             {/* 매핑되지 않은 컬럼들 (사용자 파일 + 표준 컬럼) */}
