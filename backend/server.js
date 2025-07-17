@@ -80,26 +80,25 @@ connectDB().catch(err => {
 
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://pivot-dashboard-production.up.railway.app',
   'https://pivot-dashboard.vercel.app',
-  'https://pivot-dashboard-3vsk06jsy-sanakang0615s-projects.vercel.app'
+  'https://pivot-dashboard-production.up.railway.app'
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    console.log('→ CORS origin header:', origin);
+    console.log('→ CORS origin:', origin);
     if (!origin) return callback(null, true); // allow non-browser clients
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error(`CORS blocked for origin ${origin}`));
+    return callback(new Error(`CORS 차단: ${origin}`));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-user-id', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','x-user-id','Authorization'],
   optionsSuccessStatus: 200,
   maxAge: 86400
 };
 
-// Apply unified CORS middleware
+// CORS 미들웨어는 반드시 라우트 정의 전에!
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
