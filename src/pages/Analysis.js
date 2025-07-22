@@ -762,7 +762,7 @@ const Analysis = () => {
           </div>
 
           {/* Progress Steps */}
-          <div style={{ marginBottom: '4rem' }}>
+          <div style={{ marginBottom: '6rem' }}>
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -916,7 +916,7 @@ const Analysis = () => {
             }}>
               
               {/* Data Source Selection */}
-              <div style={{ marginBottom: '3rem' }}>
+              <div style={{ marginBottom: '0' }}>
                 <h3 style={{
                   fontSize: '1.2rem',
                   fontWeight: '600',
@@ -928,7 +928,7 @@ const Analysis = () => {
                 
                 {/* Visual Upload Area */}
                 <div style={{
-                  marginBottom: '2rem',
+                  marginBottom: '4.5rem',
                   padding: '2rem',
                   background: '#f3f4f6',
                   borderRadius: '14px',
@@ -944,7 +944,7 @@ const Analysis = () => {
                     color: '#64748b',
                     marginBottom: '0.5rem'
                   }}>
-                    <span className="tossface">📁</span>
+                    <span>📁</span>
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     {/* <div style={{
@@ -981,31 +981,35 @@ const Analysis = () => {
                       alignItems: 'center',
                       gap: '0.75rem',
                       padding: '1rem 1.5rem',
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white',
-                      border: 'none',
+                      background: 'rgba(255,255,255,0.85)',
+                      border: '1.5px solid #e0e7ff', // 연보라
                       borderRadius: '12px',
-                      cursor: loading ? 'not-allowed' : 'pointer',
+                      color: '#667eea', // 포인트 연보라
                       fontSize: '0.95rem',
                       fontWeight: '600',
-                      transition: 'all 0.2s ease',
+                      cursor: loading ? 'not-allowed' : 'pointer',
                       opacity: loading ? 0.6 : 1,
-                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                      transition: 'all 0.2s cubic-bezier(.4,0,.2,1)',
+                      boxShadow: '0 2px 8px rgba(102,126,234,0.07)',
+                      outline: 'none',
+                      borderColor: loading ? '#e5e7eb' : '#e0e7ff',
                     }}
                     onMouseEnter={(e) => {
                       if (!loading) {
-                        e.target.style.transform = 'translateY(-2px)';
-                        e.target.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)';
+                        e.target.style.boxShadow = '0 4px 16px rgba(102,126,234,0.13)';
+                        e.target.style.background = 'rgba(245,243,255,0.97)'; // 연보라 배경
+                        e.target.style.borderColor = '#a5b4fc';
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!loading) {
-                        e.target.style.transform = 'translateY(0)';
-                        e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                        e.target.style.boxShadow = '0 2px 8px rgba(102,126,234,0.07)';
+                        e.target.style.background = 'rgba(255,255,255,0.85)';
+                        e.target.style.borderColor = '#e0e7ff';
                       }
                     }}
                   >
-                    <Database size={18} />
+                    <Database size={18} color="#667eea" />
                     {t('buttons.useBuiltinDataset')}
                   </button>
                   
@@ -1284,6 +1288,21 @@ const Analysis = () => {
           )}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer style={{
+        textAlign: 'center',
+        padding: '2rem',
+        marginTop: '3rem',
+        background: 'rgba(255, 255, 255, 0.7)',
+        backdropFilter: 'blur(20px)',
+        borderTop: '1px solid rgba(102, 126, 234, 0.1)',
+        color: '#64748b',
+        fontSize: '0.9rem',
+        fontWeight: '500'
+      }}>
+        © Adoasis 2025. All rights reserved.
+      </footer>
 
       {/* Dataset Selector Modal */}
       {showDatasetSelector && (
