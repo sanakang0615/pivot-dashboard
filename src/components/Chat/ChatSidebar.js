@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { X, Send, Loader2, MessageCircle, AtSign, Maximize2, Minimize2 } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import ContextSelector from './ContextSelector';
 import ChatMessage from './ChatMessage';
 
@@ -10,6 +11,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const { analysisId } = useParams();
   const location = useLocation();
   const { userId } = useAuth();
+  const { language } = useLanguage();
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -200,7 +202,8 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
         message: userMessage.content,
         contexts: allContexts, // Send all contexts used in conversation
         analysisData: sanitizeAnalysisData(analysisData),
-        chatHistory: messages.slice(-10) // Last 10 messages for context
+        chatHistory: messages.slice(-10), // Last 10 messages for context
+        language: language // 언어 정보 전달
       };
 
       console.log('📦 === REQUEST BODY PREPARATION ===');

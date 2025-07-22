@@ -297,7 +297,7 @@ const generateSimpleInsights = (data) => {
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // AI 인사이트 생성 함수 (수정된 버전)
-const generateAIInsights = async (pivotTables) => {
+const generateAIInsights = async (pivotTables, language = 'en') => {
   console.log('🤖 === GENERATE AI INSIGHTS START ===');
   console.log('🤖 Data available:', pivotTables ? Object.keys(pivotTables) : 'No data');
   console.log('🤖 Full pivot tables data:', JSON.stringify(pivotTables, null, 2));
@@ -386,7 +386,86 @@ ${performanceDistribution.map(item =>
       throw new Error('No valid data found in pivot tables');
     }
 
-    const prompt = `You are a Senior Digital Marketing Analyst with 15+ years of experience in performance marketing and data analytics, similar to analysts at enterprise consulting firms like IBM, Microsoft, Oracle, and Salesforce. 
+    const isKorean = language === 'ko';
+    const prompt = isKorean ? 
+      `당신은 IBM, Microsoft, Oracle, Salesforce와 같은 엔터프라이즈 컨설팅 회사의 분석가들과 유사한 15년 이상의 성과 마케팅 및 데이터 분석 경험을 가진 시니어 디지털 마케팅 분석가입니다.
+
+당신의 임무는 다음 광고 성과 데이터를 분석하고 깊은 마케팅 전문성과 전략적 사고를 보여주는 포괄적이고 엔터프라이즈급 분석 보고서를 제공하는 것입니다.
+
+# 📊 캠페인 성과 데이터
+
+${dataContext}
+
+# 🎯 분석 요구사항
+
+다음 구조로 **한국어** 전문 마케팅 분석 보고서를 작성하세요:
+
+## 실행 요약
+- 업계 벤치마크 대비 전체 계정 성과 간략 개요
+- 주요 발견사항 및 전략적 권장사항 (최대 2-3문장)
+
+## 성과 분석 프레임워크
+
+### 퍼널 효율성 평가
+다음 프레임워크를 사용하여 마케팅 퍼널 성과를 분석하세요:
+- **인지 단계** (노출수 & 도달): 볼륨 적절성 및 타겟 오디언스 효과성
+- **관심 단계** (CTR): 크리에이티브 공감도 및 오디언스-메시지 적합성
+- **고려 단계** (CVR): 랜딩 페이지 정렬 및 오퍼 매력도
+- **전환 단계** (CPA & ROAS): 경제적 효율성 및 확장성
+
+### 크리에이티브 성과 분류
+성과 패턴에 따라 광고/캠페인을 분류하세요:
+
+**고성과 자산:**
+- 높은 볼륨 + 높은 CTR + 높은 CVR = 승리 조합 (즉시 확장)
+- 높은 볼륨 + 높은 CTR + 낮은 CVR = 강한 훅, 부족한 랜딩 정렬 (랜딩 페이지 수정)
+- 낮은 볼륨 + 높은 CTR + 높은 CVR = 오디언스 너무 좁음 (타겟팅 확장)
+
+**저성과 자산:**
+- 높은 볼륨 + 낮은 CTR + 모든 CVR = 부족한 크리에이티브-오디언스 적합성 (크리에이티브 새로고침)
+- 모든 볼륨 + 높은 CTR + 낮은 CVR = 랜딩 페이지 불일치 (클릭 후 경험 최적화)
+- 낮은 볼륨 + 낮은 CTR + 낮은 CVR = 근본적 불일치 (일시정지 및 재설계)
+
+## 전략적 최적화 프레임워크
+
+### 즉시 조치 (1-2주)
+예상 영향과 함께한 구체적인 전술적 움직임:
+- 백분율 변화와 함께한 예산 재배치 우선순위
+- 근거와 함께한 크리에이티브 새로고침 요구사항
+- 근거와 함께한 타겟팅 조정
+
+### 성과 향상 (1-3개월)
+측정 가능한 결과와 함께한 전략적 이니셔티브:
+- 퍼널 최적화 우선순위
+- 개선을 위한 테스팅 로드맵
+- 확장 기회 식별
+
+### 포트폴리오 최적화
+고급 전략적 권장사항:
+- 캠페인/광고 세트 간 리소스 할당
+- 성과 패턴 활용
+- 저성과자에 대한 리스크 완화
+
+## 데이터 기반 인사이트
+
+### 패턴 인식
+- 데이터에서 발견된 성과 상관관계
+- 조사가 필요한 예상치 못한 발견사항
+- 해당하는 경우 계절적/시간적 패턴
+
+### 경쟁 정보
+- 일반적인 업계 벤치마크 대비 성과
+- 효율성 격차 및 개선 잠재력
+- 시장 포지셔닝 함의
+
+**중요한 가이드라인:**
+- C레벨 임원진에게 적합한 컨설팅적이고 전문적인 톤으로 작성
+- 모든 권장사항을 뒷받침하기 위해 구체적인 지표와 데이터 포인트 사용
+- 예상 비즈니스 영향과 함께 명확하고 실행 가능한 다음 단계 제공
+- 기본 데이터 요약보다는 전략적 인사이트에 집중
+- 글머리 기호 제한 - 전문성을 보여주는 분석적 산문 사용
+- 모든 주장과 권장사항에 수치적 증거 포함` :
+      `You are a Senior Digital Marketing Analyst with 15+ years of experience in performance marketing and data analytics, similar to analysts at enterprise consulting firms like IBM, Microsoft, Oracle, and Salesforce. 
 
 Your task is to analyze the following advertising performance data and provide a comprehensive, enterprise-grade analysis report that demonstrates deep marketing expertise and strategic thinking.
 
@@ -527,11 +606,15 @@ Advanced strategic recommendations:
 };
 
 // Column mapping with OpenAI
-const generateColumnMapping = async (columns) => {
+const generateColumnMapping = async (columns, language = 'en') => {
   if (!process.env.OPENAI_API_KEY) {
     return generateSimpleMapping(columns);
   }
-  const prompt = `다음 컬럼명들을 표준 마케팅 데이터 컬럼에 매핑해주세요:\n\n입력 컬럼: ${columns.join(', ')}\n표준 컬럼: account_name, account_id, date, campaign_name, campaign_id, ad_pack_name, ad_pack_id, ad_name, ad_id, platform, objective, age, gender, impressions, clicks, link_clicks, cost, reach, views, installs, orders, revenue, engagements, content_views, content_views_all\n\n각 입력 컬럼을 가장 적절한 표준 컬럼에 매핑하고, 확신도(0-1)를 함께 제공해주세요.\n매핑이 어려운 컬럼은 unmapped에 포함시키고, 애매한 경우 suggestions에 대안을 제공해주세요.\n\n다음 JSON 형태로만 응답해주세요 (다른 텍스트 없이):\n{\n  "mapping": {\n    "사용자컬럼": "표준컬럼"\n  },\n  "confidence": {\n    "사용자컬럼": 0.95\n  },\n  "unmapped": ["매핑되지않은컬럼"],\n  "suggestions": {\n    "애매한컬럼": ["대안1", "대안2"]\n  }\n}`;
+  
+  const isKorean = language === 'ko';
+  const prompt = isKorean ? 
+    `다음 컬럼명들을 표준 마케팅 데이터 컬럼에 매핑해주세요:\n\n입력 컬럼: ${columns.join(', ')}\n표준 컬럼: account_name, account_id, date, campaign_name, campaign_id, ad_pack_name, ad_pack_id, ad_name, ad_id, platform, objective, age, gender, impressions, clicks, link_clicks, cost, reach, views, installs, orders, revenue, engagements, content_views, content_views_all\n\n각 입력 컬럼을 가장 적절한 표준 컬럼에 매핑하고, 확신도(0-1)를 함께 제공해주세요.\n매핑이 어려운 컬럼은 unmapped에 포함시키고, 애매한 경우 suggestions에 대안을 제공해주세요.\n\n다음 JSON 형태로만 응답해주세요 (다른 텍스트 없이):\n{\n  "mapping": {\n    "사용자컬럼": "표준컬럼"\n  },\n  "confidence": {\n    "사용자컬럼": 0.95\n  },\n  "unmapped": ["매핑되지않은컬럼"],\n  "suggestions": {\n    "애매한컬럼": ["대안1", "대안2"]\n  }\n}` :
+    `Map the following column names to standard marketing data columns:\n\nInput columns: ${columns.join(', ')}\nStandard columns: account_name, account_id, date, campaign_name, campaign_id, ad_pack_name, ad_pack_id, ad_name, ad_id, platform, objective, age, gender, impressions, clicks, link_clicks, cost, reach, views, installs, orders, revenue, engagements, content_views, content_views_all\n\nMap each input column to the most appropriate standard column and provide confidence (0-1).\nInclude difficult-to-map columns in unmapped and provide alternatives in suggestions for ambiguous cases.\n\nRespond only in the following JSON format (no other text):\n{\n  "mapping": {\n    "user_column": "standard_column"\n  },\n  "confidence": {\n    "user_column": 0.95\n  },\n  "unmapped": ["unmapped_column"],\n  "suggestions": {\n    "ambiguous_column": ["alternative1", "alternative2"]\n  }\n}`;
   const completion = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [{ role: "user", content: prompt }],
@@ -834,7 +917,7 @@ app.post('/api/upload/extract-columns', upload.single('file'), async (req, res) 
 // 2. 컬럼 매핑 제안 API
 app.post('/api/mapping/suggest', async (req, res) => {
   try {
-    const { columns } = req.body;
+    const { columns, language = 'en' } = req.body;
     
     if (!columns || !Array.isArray(columns)) {
       return res.status(400).json({ 
@@ -843,9 +926,9 @@ app.post('/api/mapping/suggest', async (req, res) => {
       });
     }
 
-    console.log('Generating column mapping for:', columns);
+    console.log('Generating column mapping for:', columns, 'Language:', language);
     
-    const mappingResult = await generateColumnMapping(columns);
+    const mappingResult = await generateColumnMapping(columns, language);
     
     res.json({
       success: true,
@@ -864,7 +947,7 @@ app.post('/api/mapping/suggest', async (req, res) => {
 // 2.1. 컬럼 그룹화 및 추천 API
 app.post('/api/mapping/group-and-recommend', async (req, res) => {
   try {
-    const { columns, campaignContext } = req.body;
+    const { columns, campaignContext, language = 'en' } = req.body;
     
     if (!columns || !Array.isArray(columns)) {
       return res.status(400).json({ 
@@ -876,12 +959,13 @@ app.post('/api/mapping/group-and-recommend', async (req, res) => {
     console.log('🔍 === COLUMN GROUPING AND RECOMMENDATION ===');
     console.log('📊 Input columns:', columns);
     console.log('🎯 Campaign context:', campaignContext);
+    console.log('🌐 Language:', language);
 
     // 1단계: 숫자 제거하여 컬럼 그룹화
     const groupedColumns = groupSimilarColumns(columns);
     
     // 2단계: LLM 기반 컬럼 추천
-    const recommendations = await generateColumnRecommendations(groupedColumns, campaignContext);
+    const recommendations = await generateColumnRecommendations(groupedColumns, campaignContext, language);
     
     console.log('🔍 API Response structure:');
     console.log('  - groupedColumns:', groupedColumns);
@@ -933,13 +1017,15 @@ const groupSimilarColumns = (columns) => {
 };
 
 // LLM 기반 컬럼 추천 함수
-const generateColumnRecommendations = async (groupedColumns, campaignContext) => {
+const generateColumnRecommendations = async (groupedColumns, campaignContext, language = 'en') => {
   if (!process.env.OPENAI_API_KEY) {
     return generateSimpleColumnRecommendations(groupedColumns);
   }
 
   try {
-    const prompt = `당신은 마케팅 데이터 분석 전문가입니다. 동일한 성격의 컬럼들 중에서 가장 적합한 컬럼을 선택하는 것이 당신의 임무입니다.
+    const isKorean = language === 'ko';
+    const prompt = isKorean ? 
+      `당신은 마케팅 데이터 분석 전문가입니다. 동일한 성격의 컬럼들 중에서 가장 적합한 컬럼을 선택하는 것이 당신의 임무입니다.
 
 캠페인 컨텍스트:
 - 브랜드: ${campaignContext?.brand || '알 수 없음'}
@@ -969,6 +1055,39 @@ ${Object.entries(groupedColumns).map(([normalized, items]) => {
       "recommendedColumn": "추천 컬럼명",
       "reason": "추천 근거 (브랜드/제품 특성을 고려한 상세한 설명)",
       "alternatives": ["대안 컬럼1", "대안 컬럼2"]
+    }
+  ]
+}` :
+      `You are a marketing data analysis expert. Your task is to select the most suitable column from columns with similar characteristics.
+
+Campaign Context:
+- Brand: ${campaignContext?.brand || 'Unknown'}
+- Product: ${campaignContext?.product || 'Unknown'}
+- Industry: ${campaignContext?.industry || 'Unknown'}
+- Target Audience: ${campaignContext?.target_audience?.demographics || 'Unknown'}
+
+Analysis Rules:
+1. Consider accuracy and efficiency of marketing performance measurement
+2. Consider the characteristics of the brand/product
+3. Consider the characteristics of the target audience
+4. Consider industry standards and best practices
+
+Select the most suitable column from each group and provide reasoning.
+
+Column groups to analyze:
+${Object.entries(groupedColumns).map(([normalized, items]) => {
+  return `\nGroup: ${normalized}
+  Columns: ${items.map(item => item.original).join(', ')}`;
+}).join('\n')}
+
+Respond only in the following JSON format (no other text):
+{
+  "recommendations": [
+    {
+      "group": "group_name",
+      "recommendedColumn": "recommended_column_name",
+      "reason": "recommendation_reason (detailed explanation considering brand/product characteristics)",
+      "alternatives": ["alternative_column1", "alternative_column2"]
     }
   ]
 }`;
@@ -1044,7 +1163,7 @@ const generateSimpleColumnRecommendations = (groupedColumns) => {
 // 2.5. 캠페인 분석 API
 app.post('/api/analysis/campaigns', async (req, res) => {
   try {
-    const { fileId, columnMapping } = req.body;
+    const { fileId, columnMapping, language = 'en' } = req.body;
     
     if (!fileId || !columnMapping) {
       return res.status(400).json({ 
@@ -1056,6 +1175,7 @@ app.post('/api/analysis/campaigns', async (req, res) => {
     console.log('🔍 === CAMPAIGN ANALYSIS API HIT ===');
     console.log('📁 File ID:', fileId);
     console.log('🗺️ Column Mapping:', columnMapping);
+    console.log('🌐 Language:', language);
 
     // 파일 데이터 조회
     let fileData = fileStorage.get(fileId);
@@ -1096,7 +1216,7 @@ app.post('/api/analysis/campaigns', async (req, res) => {
     });
 
     // 캠페인 분석 실행
-    const campaignAnalysis = await analyzeCampaigns(fileData, columnMapping);
+    const campaignAnalysis = await analyzeCampaigns(fileData, columnMapping, language);
     
     if (!campaignAnalysis.success) {
       return res.status(500).json(campaignAnalysis);
@@ -1130,12 +1250,13 @@ app.post('/api/analysis/execute', async (req, res) => {
   
   try {
     const userId = req.headers['x-user-id'];
-    const { fileId, columnMapping } = req.body;
+    const { fileId, columnMapping, language = 'en' } = req.body;
     
     console.log('📥 === REQUEST BODY PARSED ===');
     console.log('👤 User ID:', userId);
     console.log('📁 File ID:', fileId);
     console.log('🗺️ Column Mapping:', columnMapping);
+    console.log('🌐 Language:', language);
     
     if (!userId) {
       console.error('❌ No user ID provided');
@@ -1324,11 +1445,12 @@ app.post('/api/analysis/insights', async (req, res) => {
   
   try {
     const userId = req.headers['x-user-id'];
-    const { analysisId, pivotTables } = req.body;
+    const { analysisId, pivotTables, language = 'en' } = req.body;
     
     console.log('📥 === REQUEST BODY PARSED ===');
     console.log('👤 User ID:', userId);
     console.log('📊 Analysis ID:', analysisId);
+    console.log('🌐 Language:', language);
     console.log('📊 PivotTables received:', pivotTables ? 'Yes' : 'No');
     console.log('📊 PivotTables keys:', pivotTables ? Object.keys(pivotTables) : 'N/A');
     
@@ -1382,7 +1504,7 @@ app.post('/api/analysis/insights', async (req, res) => {
     }
     
     console.log('🤖 === GENERATING AI INSIGHTS ===');
-    const insights = await generateAIInsights(pivotTables);
+    const insights = await generateAIInsights(pivotTables, language);
     
     console.log('✅ AI Insights generated:', {
       type: typeof insights,
@@ -1594,7 +1716,7 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
     }
 
     // 3. Generate insights
-    const insights = await generateAIInsights(pivotData);
+    const insights = await generateAIInsights(pivotData, 'en'); // Default to English for file uploads
 
     // 4. Save to MongoDB (if available)
     let analysisDoc;
@@ -2692,7 +2814,7 @@ const convertBigInts = (obj) => {
 };
 
 // Campaign analysis with LLM
-const analyzeCampaigns = async (fileData, columnMapping) => {
+const analyzeCampaigns = async (fileData, columnMapping, language = 'en') => {
   if (!process.env.OPENAI_API_KEY) {
     return {
       success: false,
@@ -2848,7 +2970,9 @@ const analyzeCampaigns = async (fileData, columnMapping) => {
     console.log(`🔍 Processed campaign names:`, processedCampaignNames);
     console.log(`🔍 Analyzing ${processedCampaignNames.length} processed terms to identify single brand/product:`, processedCampaignNames);
 
-    const prompt = `당신은 현재 정보에 접근할 수 있는 마케팅 데이터 분석가입니다. 처리된 캠페인 용어 목록에서 단일 브랜드와 제품을 식별하는 것이 당신의 임무입니다.
+    const isKorean = language === 'ko';
+    const prompt = isKorean ? 
+      `당신은 현재 정보에 접근할 수 있는 마케팅 데이터 분석가입니다. 처리된 캠페인 용어 목록에서 단일 브랜드와 제품을 식별하는 것이 당신의 임무입니다.
 
 중요: 이 파일에는 하나의 브랜드와 하나의 제품에 대한 캠페인만 포함되어 있습니다. 아래 용어들은 마케팅 전문용어와 일반적인 용어를 제거하여 전처리되었습니다.
 
@@ -2891,6 +3015,50 @@ ${processedCampaignNames.map((name, index) => `${index + 1}. ${name}`).join('\n'
   "description": "브랜드와 제품에 대한 간결하지만 상세한 설명 (2-3문장)",
   "analysis_reason": "타겟 오디언스 분석 근거 (브랜드 특성과 제품 특성을 고려한 상세한 설명, 가격 정책과 지역 특성 포함)",
   "total_campaigns": ${rawCampaignNames.length}
+}` :
+      `You are a marketing data analyst with access to current information. Your task is to identify a single brand and product from the processed campaign terms list.
+
+Important: This file contains campaigns for only one brand and one product. The terms below have been preprocessed to remove marketing jargon and common terms.
+
+Analysis Rules:
+- Use your knowledge to search for and identify actual existing companies and brands
+- Find patterns across all terms to identify a single brand
+- Identify the single product/service being advertised
+- Use web search knowledge to verify if companies exist
+- For Korean/Asian companies, provide English brand names when possible
+- If a specific brand cannot be identified, infer the industry/category based on remaining terms
+
+Target Audience Analysis Considerations:
+- If price-related keywords like "lowest price challenge", "discount", "special offer", "promotion" are present, consider price-sensitive consumers
+- If location names like "Busan", "Seoul", "USA", "Korea" are present, reflect the consumer characteristics of that region
+- Synthesize keywords that appear with location names to analyze regional consumption patterns
+
+Search Requirements:
+- Actively search for and verify the existence of mentioned companies
+- Use current knowledge about companies and brands
+- For Korean brands, search for English equivalents
+- Search thoroughly - these terms are likely to represent actual companies
+
+Example:
+- Terms: ["Nike", "Nike", "Brand"] 
+  → Search: "Nike" (global sportswear brand) → Single brand: "Nike", Single product: "Sportswear"
+
+Processed campaign terms to analyze:
+${processedCampaignNames.map((name, index) => `${index + 1}. ${name}`).join('\n')}
+
+Provide analysis only in the following JSON format (no other text):
+{
+  "brand": "identified single brand name or 'Unknown Brand'",
+  "product": "identified specific product name (e.g., 'Skin Soothing Cream', 'Whitening Essence', 'Moisturizing Lotion', etc.)",
+  "industry": "industry category",
+  "target_audience": {
+    "demographics": "age group and gender (e.g., 'Women in their 20s-40s', 'Men in their 30s-50s')",
+    "characteristics": "very specific consumer characteristics (including price sensitivity, regional characteristics, lifestyle, etc.)",
+  },
+  "confidence": 0.9,
+  "description": "concise but detailed description of the brand and product (2-3 sentences)",
+  "analysis_reason": "target audience analysis reasoning (detailed explanation considering brand and product characteristics, including pricing policy and regional characteristics)",
+  "total_campaigns": ${rawCampaignNames.length}
 }`;
 
     const completion = await openai.chat.completions.create({
@@ -2898,7 +3066,9 @@ ${processedCampaignNames.map((name, index) => `${index + 1}. ${name}`).join('\n'
       messages: [
         {
           role: "system",
-          content: "당신은 글로벌 브랜드와 회사에 대한 광범위한 지식을 가진 마케팅 데이터 분석가입니다. 현재 정보에 접근할 수 있고 실제 회사를 검색할 수 있습니다. 당신의 임무는 제공된 용어에서 실제 브랜드와 제품을 적극적으로 검색하고 식별하는 것입니다. 이 용어들은 전처리되었으며 실제 회사명이나 제품을 나타낼 가능성이 높습니다. 회사가 존재하는지 확인하기 위해 검색 기능을 사용하세요, 특히 한국과 아시아 브랜드의 경우. 가능하면 항상 영어 브랜드명을 제공하세요. 철저하게 검색하세요 - 이들은 식별 가능해야 하는 실제 회사일 가능성이 높습니다."
+          content: isKorean ? 
+            "당신은 글로벌 브랜드와 회사에 대한 광범위한 지식을 가진 마케팅 데이터 분석가입니다. 현재 정보에 접근할 수 있고 실제 회사를 검색할 수 있습니다. 당신의 임무는 제공된 용어에서 실제 브랜드와 제품을 적극적으로 검색하고 식별하는 것입니다. 이 용어들은 전처리되었으며 실제 회사명이나 제품을 나타낼 가능성이 높습니다. 회사가 존재하는지 확인하기 위해 검색 기능을 사용하세요, 특히 한국과 아시아 브랜드의 경우. 가능하면 항상 영어 브랜드명을 제공하세요. 철저하게 검색하세요 - 이들은 식별 가능해야 하는 실제 회사일 가능성이 높습니다." :
+            "You are a marketing data analyst with extensive knowledge of global brands and companies. You have access to current information and can search for actual companies. Your task is to actively search for and identify actual brands and products from the provided terms. These terms have been preprocessed and are likely to represent actual company names or products. Use search functionality to verify if companies exist, especially for Korean and Asian brands. Always provide English brand names when possible. Search thoroughly - these are likely to be actual companies that should be identifiable."
         },
         {
           role: "user",

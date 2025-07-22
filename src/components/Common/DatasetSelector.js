@@ -2,17 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { Database, FileText, ArrowRight, CheckCircle, Loader } from 'lucide-react';
 import { getDatasetInfo } from '../../utils/parquetReader';
 import { useAuth } from '@clerk/clerk-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
   const { userId, isSignedIn } = useAuth();
+  const { t, language } = useLanguage();
   const [selectedDataset, setSelectedDataset] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [datasetInfo, setDatasetInfo] = useState(null);
 
   const datasets = [
-    getDatasetInfo('campaign_data'),
-    getDatasetInfo('adpack_data')
+    {
+      ...getDatasetInfo('campaign_data'),
+      name: t('datasetSelector.campaignData.name'),
+      description: t('datasetSelector.campaignData.description')
+    },
+    {
+      ...getDatasetInfo('adpack_data'),
+      name: t('datasetSelector.adpackData.name'),
+      description: t('datasetSelector.adpackData.description')
+    }
   ].filter(Boolean);
 
   const handleDatasetSelect = async (dataset) => {
@@ -40,7 +50,10 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
           'Content-Type': 'application/json',
           'x-user-id': userId
         },
-        body: JSON.stringify({ datasetId: dataset.id })
+        body: JSON.stringify({ 
+          datasetId: dataset.id,
+          language: language // 언어 정보 전달
+        })
       });
       
       const result = await response.json();
@@ -124,10 +137,10 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
             color: '#1f2937',
             marginBottom: '0.5rem'
           }}>
-            Select Built-in Dataset
+            {t('datasetSelector.title')}
           </h2>
           <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-            Select one of the datasets provided by Snowflake
+            {t('datasetSelector.subtitle')}
           </p>
         </div>
 
@@ -197,7 +210,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
                   fontSize: '0.8rem'
                 }}>
                   <Database size={14} style={{ marginRight: '0.5rem' }} />
-                  Parquet File
+                  {t('datasetSelector.parquetFile')}
                 </div>
               </div>
             ))}
@@ -212,7 +225,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
             color: '#6b7280'
           }}>
             <Loader size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: '1rem' }} />
-            <p>Loading dataset...</p>
+            <p>{t('datasetSelector.loading')}</p>
           </div>
         )}
 
@@ -245,7 +258,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
               color: '#1f2937',
               marginBottom: '1rem'
             }}>
-              Selected Dataset Information
+              {t('datasetSelector.selectedInfo')}
             </h4>
             
             <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
@@ -255,7 +268,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
                   color: '#6b7280',
                   margin: '0 0 0.25rem 0'
                 }}>
-                  Dataset Name
+                  {t('datasetSelector.datasetName')}
                 </p>
                 <p style={{ 
                   fontSize: '1rem', 
@@ -272,7 +285,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
                   color: '#6b7280',
                   margin: '0 0 0.25rem 0'
                 }}>
-                  Number of Columns
+                  {t('datasetSelector.numberOfColumns')}
                 </p>
                 <p style={{ 
                   fontSize: '1rem', 
@@ -290,7 +303,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
                 color: '#6b7280',
                 margin: '0 0 0.5rem 0'
               }}>
-                Included Columns
+                {t('datasetSelector.includedColumns')}
               </p>
               <div style={{
                 display: 'flex',
@@ -336,7 +349,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
               fontWeight: '500'
             }}
           >
-            Cancel
+            {t('buttons.cancel')}
           </button>
           {/* Fix parquet error */}
           <button
@@ -357,7 +370,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
             }}
           >
             <ArrowRight size={16} />
-            Start Analysis
+            {t('datasetSelector.startAnalysis')}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLanguage } from '../contexts/LanguageContext';
 import ProgressSteps from './Common/ProgressSteps';
 
 const ColumnMappingModal = ({ 
@@ -9,6 +10,7 @@ const ColumnMappingModal = ({
   loading = false,
   isMainPage = false
 }) => {
+  const { language } = useLanguage();
   const [editedMapping, setEditedMapping] = useState({});
   const [showTip, setShowTip] = useState(false);
   const [columnRecommendations, setColumnRecommendations] = useState(null);
@@ -88,7 +90,8 @@ const ColumnMappingModal = ({
         },
         body: JSON.stringify({
           columns: mappingResult.unmapped,
-          campaignContext: mappingResult.campaignContext
+          campaignContext: mappingResult.campaignContext,
+          language: language // 언어 정보 전달
         })
       });
 

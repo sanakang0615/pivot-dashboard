@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Upload, X, FileText, ArrowRight, CheckCircle } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 import ColumnMappingModal from '../ColumnMappingModal';
 import CampaignAnalysisModal from '../CampaignAnalysisModal';
 
 const FileUpload = ({ onFileUploaded, onCancel }) => {
   const { userId, isLoaded, isSignedIn } = useAuth();
+  const { language } = useLanguage();
   
   const [step, setStep] = useState(1); // 1: upload, 2: campaign analysis, 3: mapping, 4: analysis
   
@@ -81,7 +83,10 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/mapping/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ columns })
+        body: JSON.stringify({ 
+          columns,
+          language: language // 언어 정보 전달
+        })
       });
       
       const result = await response.json();
@@ -116,7 +121,8 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           fileId,
-          columnMapping: mappingResult.mapping
+          columnMapping: mappingResult.mapping,
+          language: language // 언어 정보 전달
         })
       });
       
@@ -182,7 +188,8 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
         },
         body: JSON.stringify({
           fileId: mappingResult.fileId,
-          columnMapping: confirmedMapping
+          columnMapping: confirmedMapping,
+          language: language // 언어 정보 전달
         })
       });
       

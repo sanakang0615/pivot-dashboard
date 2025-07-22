@@ -59,6 +59,44 @@
       "impressions": "Impressions",
       "ctr": "CTR",
       "conversions": "Conversions"
+    },
+    "datasetSelector": {
+      "title": "Select Built-in Dataset",
+      "subtitle": "Select one of the datasets provided by Snowflake",
+      "parquetFile": "Parquet File",
+      "loading": "Loading dataset...",
+      "selectedInfo": "Selected Dataset Information",
+      "datasetName": "Dataset Name",
+      "numberOfColumns": "Number of Columns",
+      "includedColumns": "Included Columns",
+      "startAnalysis": "Start Analysis",
+      "campaignData": {
+        "name": "Campaign Data",
+        "description": "Campaign level data (Publisher: Meta)"
+      },
+      "adpackData": {
+        "name": "AdPack Data", 
+        "description": "Ad pack level data (Campaign ID based mapping)"
+      }
+    },
+    "campaignAnalysis": {
+      "title": "Campaign Analysis Results",
+      "confidence": "Confidence",
+      "fileAnalysisResult": "File Analysis Result",
+      "brand": "Brand",
+      "product": "Product",
+      "industry": "Industry",
+      "targetAudience": "Target Audience",
+      "ageGroup": "Age Group",
+      "characteristics": "Characteristics",
+      "brandDescription": "Brand & Product Description",
+      "targetAudienceAnalysis": "Target Audience Analysis",
+      "notSpecified": "Not specified",
+      "analyzing": "Analyzing campaigns...",
+      "noData": "Campaign analysis data is not available.",
+      "back": "Back",
+      "continueToMapping": "Continue to Column Mapping",
+      "processing": "Processing..."
     }
   },
   "ko": {
@@ -72,8 +110,8 @@
       "getStarted": "무료로 시작하기",
       "goToDashboard": "대시보드로 이동",
       "watchDemo": "데모 보기",
-      "useBuiltinDataset": "내장 데이터셋 사용",
-      "fileUpload": "파일 업로드",
+      "useBuiltinDataset": "사내 데이터 사용",
+      "fileUpload": "직접 업로드",
       "newAnalysis": "새 분석",
       "cancel": "취소",
       "signIn": "로그인",
@@ -89,7 +127,7 @@
     },
     "progress": {
       "step1": "파일 업로드",
-      "step2": "타겟 예측",
+      "step2": "고객 예측",
       "step3": "컬럼 매핑", 
       "step4": "캠페인 분석"
     },
@@ -114,13 +152,51 @@
       "itemsAnalyzed": "{count}개 항목 분석됨",
       "moreItems": "전체 리포트에서 {count}개 항목 더 보기"
     },
-    "pivotTables": {
+        "pivotTables": {
       "campaign": "캠페인 성과",
-      "adSet": "광고 세트 성과",
-      "ad": "광고 성과", 
+      "adSet": "광고 세트 성과", 
+      "ad": "광고 성과",
       "impressions": "노출수",
       "ctr": "클릭률",
       "conversions": "전환수"
+    },
+    "datasetSelector": {
+      "title": "사내 데이터셋 선택",
+      "subtitle": "Snowflake에서 제공하는 데이터셋 중 하나를 선택하세요",
+      "parquetFile": "Parquet 파일",
+      "loading": "데이터셋 로딩 중...",
+      "selectedInfo": "선택된 데이터셋 정보",
+      "datasetName": "데이터셋 이름",
+      "numberOfColumns": "컬럼 수",
+      "includedColumns": "포함된 컬럼",
+      "startAnalysis": "분석 시작",
+      "campaignData": {
+        "name": "Campaign 데이터",
+        "description": "Campaign Label Data(퍼블리셔: 메타)"
+      },
+      "adpackData": {
+        "name": "AdPack 데이터",
+        "description": "AdPack Label Data (캠페인 ID 기반 매핑)"
+      }
+    },
+    "campaignAnalysis": {
+      "title": "캠페인 분석 결과",
+      "confidence": "신뢰도",
+      "fileAnalysisResult": "파일 분석 결과",
+      "brand": "브랜드",
+      "product": "제품",
+      "industry": "산업",
+      "targetAudience": "타겟 오디언스",
+      "ageGroup": "연령대",
+      "characteristics": "특징",
+      "brandDescription": "브랜드 및 제품 설명",
+      "targetAudienceAnalysis": "타겟 오디언스 분석",
+      "notSpecified": "지정되지 않음",
+      "analyzing": "캠페인 분석 중...",
+      "noData": "캠페인 분석 데이터를 사용할 수 없습니다.",
+      "back": "뒤로",
+      "continueToMapping": "컬럼 매핑으로 계속",
+      "processing": "처리 중..."
     }
   }
 } 

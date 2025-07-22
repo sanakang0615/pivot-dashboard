@@ -132,7 +132,10 @@ const Analysis = () => {
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/mapping/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ columns })
+        body: JSON.stringify({ 
+          columns,
+          language: language // 언어 정보 전달
+        })
       });
       
       const result = await response.json();
@@ -166,7 +169,8 @@ const Analysis = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           fileId,
-          columnMapping: mappingResult.mapping
+          columnMapping: mappingResult.mapping,
+          language: language // 언어 정보 전달
         })
       });
       
@@ -241,7 +245,8 @@ const Analysis = () => {
         },
         body: JSON.stringify({
           fileId: mappingResult.fileId,
-          columnMapping: confirmedMapping
+          columnMapping: confirmedMapping,
+          language: language // 언어 정보 전달
         })
       });
       
@@ -305,7 +310,8 @@ const Analysis = () => {
             },
             body: JSON.stringify({
               analysisId: analysisResult.analysisId,
-              pivotTables: validatedPivotTables
+              pivotTables: validatedPivotTables,
+              language: language // 언어 정보 전달
             })
           });
           
