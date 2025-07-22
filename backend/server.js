@@ -1373,11 +1373,12 @@ app.post('/api/analysis/execute', async (req, res) => {
           pivotData: pivotTables || {},
           insights: '', // AI 인사이트는 별도 API에서 생성
           status: 'completed',
+          language: language, // <-- top-level language field for easier querying
           metadata: {
             rowCount: fileData.data.length,
             columns: Object.keys(columnMapping),
             columnMapping,
-            language: language,
+            language: language, // <-- always save language in metadata
             processedAt: new Date().toISOString()
           }
         });
@@ -1419,7 +1420,8 @@ app.post('/api/analysis/execute', async (req, res) => {
       metadata: {
         rowCount: fileData.data.length,
         columnMapping,
-        processedAt: new Date().toISOString()
+        processedAt: new Date().toISOString(),
+        language: language // <-- always return language in metadata
       }
     };
     
@@ -1754,11 +1756,12 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
           classifiedData,
           insights,
           status: 'completed',
+          language: 'en', // <-- top-level language field for easier querying
           metadata: {
             rowCount: rawData.length,
             columns: Object.keys(rawData[0] || {}),
             fileType: fileExtension.slice(1),
-            language: 'en' // Default to English for file uploads
+            language: 'en' // <-- always save language in metadata
           }
         });
 
@@ -1817,7 +1820,7 @@ app.get('/api/analyses', async (req, res) => {
 
     const analyses = await Analysis.find({ userId })
       .sort({ createdAt: -1 })
-      .select('_id fileName fileSize createdAt updatedAt status metadata.language');
+      .select('_id fileName fileSize createdAt updatedAt status metadata.language language');
 
     res.json({
       success: true,
@@ -1828,7 +1831,7 @@ app.get('/api/analyses', async (req, res) => {
         createdAt: analysis.createdAt,
         updatedAt: analysis.updatedAt,
         status: analysis.status,
-        language: analysis.metadata?.language || null
+        language: analysis.metadata?.language || analysis.language || null // always return language
       }))
     });
   } catch (error) {

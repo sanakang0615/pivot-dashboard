@@ -6,6 +6,7 @@ const AnalysisSchema = new mongoose.Schema({
   fileSize: { type: Number, required: true },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  language: { type: String },
   rawData: { type: Array, default: [] },
   pivotData: { type: Object, default: {} },
   classifiedData: { type: Array, default: [] },
@@ -19,7 +20,8 @@ const AnalysisSchema = new mongoose.Schema({
   metadata: {
     rowCount: Number,
     columns: [String],
-    fileType: String
+    fileType: String,
+    language: String
   }
 });
 
