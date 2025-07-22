@@ -7,6 +7,8 @@ import { usePDF } from 'react-to-pdf';
 import HeatmapChart from '../HeatmapChart';
 import Sidebar from '../Common/Sidebar';
 import ChatSidebar from '../Chat/ChatSidebar';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { Globe, ChevronDown } from 'lucide-react';
 
 const AnalysisPage = () => {
   const { analysisId } = useParams();
@@ -28,6 +30,8 @@ const AnalysisPage = () => {
   const [hasGeneratedHeatmap, setHasGeneratedHeatmap] = useState(false);
   const heatmapRef = useRef(null);
   const contentRef = useRef(null);
+  const { language, t, changeLanguage } = useLanguage();
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   
   // PDF export hook
   const { toPDF, targetRef } = usePDF({
@@ -895,13 +899,128 @@ const AnalysisPage = () => {
             </h1>
           </div>
         </div>
-
-        {/* Right side - Auth */}
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '1rem' 
-        }}>
+        {/* Right side - Language & Auth */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Language Selector */}
+          <div style={{ position: 'relative' }} data-language-selector>
+            <button
+              onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 0.75rem',
+                background: 'rgba(255, 255, 255, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '500',
+                color: '#374151',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.2s ease',
+                minWidth: '80px',
+                justifyContent: 'space-between'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                e.target.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.8)';
+                e.target.style.transform = 'scale(1)';
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Globe size={14} color="#64748b" />
+                <span style={{ 
+                  fontSize: '0.8rem', 
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>
+                  {language === 'ko' ? '한국어' : language === 'en' ? 'English' : '日本語'}
+                </span>
+              </div>
+              <ChevronDown 
+                size={12} 
+                color="#64748b" 
+                style={{
+                  transition: 'transform 0.2s ease',
+                  transform: showLanguageDropdown ? 'rotate(180deg)' : 'rotate(0deg)'
+                }}
+              />
+            </button>
+            {/* Language Dropdown */}
+            {showLanguageDropdown && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '0.5rem',
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                minWidth: '120px',
+                zIndex: 1000,
+                overflow: 'hidden'
+              }}>
+                {[
+                  { code: 'en', name: 'English', flag: '🇺🇸' },
+                  { code: 'ko', name: '한국어', flag: '🇰🇷' }
+                ].map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      changeLanguage(lang.code);
+                      setShowLanguageDropdown(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      width: '100%',
+                      padding: '0.75rem 1rem',
+                      background: language === lang.code 
+                        ? 'rgba(102, 126, 234, 0.1)' 
+                        : 'transparent',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '0.85rem',
+                      fontWeight: language === lang.code ? '600' : '500',
+                      color: language === lang.code ? '#667eea' : '#374151',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'left'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (language !== lang.code) {
+                        e.target.style.background = 'rgba(102, 126, 234, 0.05)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (language !== lang.code) {
+                        e.target.style.background = 'transparent';
+                      }
+                    }}
+                  >
+                    <span className="tossface" style={{ fontSize: '1.1rem' }}>{lang.flag}</span>
+                    <span>{lang.name}</span>
+                    {language === lang.code && (
+                      <div style={{
+                        width: '4px',
+                        height: '4px',
+                        borderRadius: '50%',
+                        background: '#667eea',
+                        marginLeft: 'auto'
+                      }} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* ... existing right side buttons ... */}
           <button
             onClick={() => setChatSidebarOpen(true)}
             style={{
