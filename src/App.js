@@ -2,13 +2,14 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
 import Analysis from './pages/Analysis';
-import HomePage from './components/Landing/Homepage';
 import Dashboard from './components/Dashboard/Dashboard';
 import AnalysisPage from './components/Analysis/AnalysisPage';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import { FullPageLoader } from './components/Common/LoadingSpinner';
 import { UserProvider } from './contexts/UserContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import './App.css';
+import './styles/fonts.css';
 
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
@@ -56,37 +57,39 @@ function App() {
         }}
       >
         <UserProvider>
-          <Router>
-            <div className="App">
-              <Routes>
-                <Route path="/" element={<Analysis />} />
-                <Route 
-                  path="/dashboard" 
-                  element={
-                    <SignedIn>
-                      <Dashboard />
-                    </SignedIn>
-                  } 
-                />
-                <Route 
-                  path="/analysis/:analysisId" 
-                  element={
-                    <SignedIn>
-                      <AnalysisPage />
-                    </SignedIn>
-                  } 
-                />
-                <Route path="*" element={<Navigate to="/" />} />
-              </Routes>
-              
-              <SignedOut>
+          <LanguageProvider>
+            <Router>
+              <div className="App">
                 <Routes>
-                  <Route path="/dashboard" element={<Navigate to="/" />} />
-                  <Route path="/analysis/:analysisId" element={<Navigate to="/" />} />
+                  <Route path="/" element={<Analysis />} />
+                  <Route 
+                    path="/dashboard" 
+                    element={
+                      <SignedIn>
+                        <Dashboard />
+                      </SignedIn>
+                    } 
+                  />
+                  <Route 
+                    path="/analysis/:analysisId" 
+                    element={
+                      <SignedIn>
+                        <AnalysisPage />
+                      </SignedIn>
+                    } 
+                  />
+                  <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
-              </SignedOut>
-            </div>
-          </Router>
+                
+                <SignedOut>
+                  <Routes>
+                    <Route path="/dashboard" element={<Navigate to="/" />} />
+                    <Route path="/analysis/:analysisId" element={<Navigate to="/" />} />
+                  </Routes>
+                </SignedOut>
+              </div>
+            </Router>
+          </LanguageProvider>
         </UserProvider>
       </ClerkProvider>
     </ErrorBoundary>

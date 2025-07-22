@@ -1,0 +1,126 @@
+{
+  "en": {
+    "hero": {
+      "badge": "AI-Powered Data Analysis",
+      "title": "Transform Your Data",
+      "titleHighlight": "<br/> Into Insights",
+      "subtitle": "Upload your marketing campaign data and get AI-powered insights with actionable recommendations in minutes."
+    },
+    "buttons": {
+      "getStarted": "Get Started Free",
+      "goToDashboard": "Go to Dashboard",
+      "watchDemo": "Watch Demo",
+      "useBuiltinDataset": "Use Built-in Dataset",
+      "fileUpload": "File Upload",
+      "newAnalysis": "New Analysis",
+      "cancel": "Cancel",
+      "signIn": "Sign In",
+      "logIn": "Log In",
+      "signUp": "Sign Up"
+    },
+    "upload": {
+      "title": "Upload your marketing data file",
+      "description": "Upload your marketing data file",
+      "supportedFormats": "Supported formats: CSV, Excel (.xlsx, .xls), Parquet",
+      "maxFileSize": "Max file size: 10MB",
+      "or": "or"
+    },
+    "progress": {
+      "step1": "Upload File",
+      "step2": "Predict Audience", 
+      "step3": "Map Columns",
+      "step4": "Analyze Campaign"
+    },
+    "errors": {
+      "title": "Oops! Something went wrong",
+      "signInRequired": "Sign In Required",
+      "signInMessage": "Please sign in to upload files and create analyses. Your data will be securely stored and accessible from any device."
+    },
+    "loading": {
+      "analyzing": "Analyzing your file...",
+      "mapping": "Generating column mapping...",
+      "creating": "Creating insights...",
+      "subtitle": "This might take a few moments"
+    },
+    "results": {
+      "analyzedRows": "Analyzed {count} rows of data",
+      "goToDashboard": "Go to Dashboard",
+      "performanceHeatmap": "Performance Heatmap",
+      "heatmapDescription": "Visual representation of key metrics across campaigns",
+      "aiAnalysisReport": "AI Analysis Report",
+      "aiDescription": "Gemini AI-generated insights and recommendations",
+      "itemsAnalyzed": "{count} items analyzed",
+      "moreItems": "{count} more items available in full report"
+    },
+    "pivotTables": {
+      "campaign": "Campaign Performance",
+      "adSet": "Ad Set Performance", 
+      "ad": "Ad Performance",
+      "impressions": "Impressions",
+      "ctr": "CTR",
+      "conversions": "Conversions"
+    }
+  },
+  "ko": {
+    "hero": {
+      "badge": "AI 기반 데이터 분석",
+      "title": "데이터 업로드만으로\n이어지는 ",
+      "titleHighlight": "마케팅 인사이트",
+      "subtitle": "마케팅 캠페인 데이터를 업로드하고 AI 기반 인사이트와 실행 가능한 권장사항을 <br/> 몇 분 안에 받아보세요. 반복적인 작업 없이 자사 솔루션이 대신 작업합니다."
+    },
+    "buttons": {
+      "getStarted": "무료로 시작하기",
+      "goToDashboard": "대시보드로 이동",
+      "watchDemo": "데모 보기",
+      "useBuiltinDataset": "내장 데이터셋 사용",
+      "fileUpload": "파일 업로드",
+      "newAnalysis": "새 분석",
+      "cancel": "취소",
+      "signIn": "로그인",
+      "logIn": "로그인",
+      "signUp": "회원가입"
+    },
+    "upload": {
+      "title": "데이터 파일을 업로드하세요",
+      "description": "마케팅 데이터 파일을 업로드하세요",
+      "supportedFormats": "지원 형식: CSV, Excel (.xlsx, .xls), Parquet",
+      "maxFileSize": "최대 파일 크기: 10MB",
+      "or": "또는"
+    },
+    "progress": {
+      "step1": "파일 업로드",
+      "step2": "타겟 예측",
+      "step3": "컬럼 매핑", 
+      "step4": "캠페인 분석"
+    },
+    "errors": {
+      "title": "오류가 발생했습니다",
+      "signInRequired": "로그인 필요",
+      "signInMessage": "파일을 업로드하고 분석을 생성하려면 로그인해주세요. 데이터는 안전하게 저장되며 모든 기기에서 접근할 수 있습니다."
+    },
+    "loading": {
+      "analyzing": "파일을 분석하고 있습니다...",
+      "mapping": "컬럼 매핑을 생성하고 있습니다...",
+      "creating": "인사이트를 생성하고 있습니다...",
+      "subtitle": "잠시만 기다려주세요"
+    },
+    "results": {
+      "analyzedRows": "{count}개의 행을 분석했습니다",
+      "goToDashboard": "대시보드로 이동",
+      "performanceHeatmap": "성과 히트맵",
+      "heatmapDescription": "캠페인별 주요 지표의 시각적 표현",
+      "aiAnalysisReport": "AI 분석 리포트",
+      "aiDescription": "Gemini AI가 생성한 인사이트와 권장사항",
+      "itemsAnalyzed": "{count}개 항목 분석됨",
+      "moreItems": "전체 리포트에서 {count}개 항목 더 보기"
+    },
+    "pivotTables": {
+      "campaign": "캠페인 성과",
+      "adSet": "광고 세트 성과",
+      "ad": "광고 성과", 
+      "impressions": "노출수",
+      "ctr": "클릭률",
+      "conversions": "전환수"
+    }
+  }
+} 

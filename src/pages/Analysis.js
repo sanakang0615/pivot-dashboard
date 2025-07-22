@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, X, FileText, FolderOpen, ArrowRight, AlertTriangle, Database } from 'lucide-react';
+import { Menu, X, FileText, FolderOpen, ArrowRight, AlertTriangle, Database, Globe, ChevronDown } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import ColumnMappingModal from '../components/ColumnMappingModal';
 import CampaignAnalysisModal from '../components/CampaignAnalysisModal';
 import HeatmapChart from '../components/HeatmapChart';
@@ -11,6 +12,7 @@ import DatasetSelector from '../components/Common/DatasetSelector';
 const Analysis = () => {
   const { userId, isSignedIn } = useAuth();
   const navigate = useNavigate();
+  const { language, t, changeLanguage } = useLanguage();
   const [step, setStep] = useState(1);
   const [fileData, setFileData] = useState(null);
   const [mappingResult, setMappingResult] = useState(null);
@@ -29,6 +31,9 @@ const Analysis = () => {
   
   // Dataset selector state
   const [showDatasetSelector, setShowDatasetSelector] = useState(false);
+  
+  // Language selector state
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
 
   // Fetch user's analysis list
   useEffect(() => {
@@ -53,6 +58,34 @@ const Analysis = () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [sidebarOpen]); // 상태를 의존성에 포함
+
+  // Close language dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showLanguageDropdown && !event.target.closest('[data-language-selector]')) {
+        setShowLanguageDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showLanguageDropdown]);
+
+  // Handle window resize for progress steps
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // Handle file upload with login check
   const handleFileUpload = async (file) => {
@@ -416,7 +449,7 @@ const Analysis = () => {
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #fafbff 0%, #f8fafc 50%, #f1f5f9 100%)',
-        fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif',
         position: 'relative'
       }}>
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -496,8 +529,129 @@ const Analysis = () => {
           </div>
         </div>
 
-        {/* Right side - Auth */}
+        {/* Right side - Language & Auth */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Language Selector */}
+          <div style={{ position: 'relative' }} data-language-selector>
+            <button
+              onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 0.75rem',
+                background: 'rgba(255, 255, 255, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+                fontWeight: '500',
+                color: '#374151',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.2s ease',
+                minWidth: '80px',
+                justifyContent: 'space-between'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.95)';
+                e.target.style.transform = 'scale(1.02)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'rgba(255, 255, 255, 0.8)';
+                e.target.style.transform = 'scale(1)';
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Globe size={14} color="#64748b" />
+                <span style={{ 
+                  fontSize: '0.8rem', 
+                  fontWeight: '600',
+                  color: '#374151'
+                }}>
+                  {language === 'ko' ? '한국어' : language === 'en' ? 'English' : '日本語'}
+                </span>
+              </div>
+              <ChevronDown 
+                size={12} 
+                color="#64748b" 
+                style={{
+                  transition: 'transform 0.2s ease',
+                  transform: showLanguageDropdown ? 'rotate(180deg)' : 'rotate(0deg)'
+                }}
+              />
+            </button>
+            
+            {/* Language Dropdown */}
+            {showLanguageDropdown && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '0.5rem',
+                background: 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                minWidth: '120px',
+                zIndex: 1000,
+                overflow: 'hidden'
+              }}>
+                {[
+                  { code: 'en', name: 'English', flag: '🇺🇸' },
+                  { code: 'ko', name: '한국어', flag: '🇰🇷' }
+                ].map((lang) => (
+                  <button
+                    key={lang.code}
+                                       onClick={() => {
+                     changeLanguage(lang.code);
+                     setShowLanguageDropdown(false);
+                   }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      width: '100%',
+                      padding: '0.75rem 1rem',
+                                           background: language === lang.code 
+                       ? 'rgba(102, 126, 234, 0.1)' 
+                       : 'transparent',
+                     border: 'none',
+                     cursor: 'pointer',
+                     fontSize: '0.85rem',
+                     fontWeight: language === lang.code ? '600' : '500',
+                     color: language === lang.code ? '#667eea' : '#374151',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'left'
+                    }}
+                                         onMouseEnter={(e) => {
+                       if (language !== lang.code) {
+                         e.target.style.background = 'rgba(102, 126, 234, 0.05)';
+                       }
+                     }}
+                     onMouseLeave={(e) => {
+                       if (language !== lang.code) {
+                         e.target.style.background = 'transparent';
+                       }
+                     }}
+                                     >
+                     <span className="tossface" style={{ fontSize: '1.1rem' }}>{lang.flag}</span>
+                     <span>{lang.name}</span>
+                                         {language === lang.code && (
+                      <div style={{
+                        width: '4px',
+                        height: '4px',
+                        borderRadius: '50%',
+                        background: '#667eea',
+                        marginLeft: 'auto'
+                      }} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          
           {isSignedIn ? (
             <UserButton 
               afterSignOutUrl="/" 
@@ -568,7 +722,7 @@ const Analysis = () => {
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
             }}>
               <span className="tossface" style={{ fontSize: '1.2rem' }}>🧠</span>
-              AI-Powered Data Analysis
+              {t('hero.badge')}
             </div>
             
             <h1 style={{
@@ -579,14 +733,20 @@ const Analysis = () => {
               letterSpacing: '-0.03em',
               lineHeight: '1.1'
             }}>
-              Transform Your Data
-              <br />
-              Into <span style={{
+              {t('hero.title').split('\n').map((line, index) => (
+                <React.Fragment key={index}>
+                  {index > 0 && <br />}
+                  {line}
+                </React.Fragment>
+              ))}
+              <span style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text'
-              }}>Insights</span>
+              }}
+              dangerouslySetInnerHTML={{ __html: t('hero.titleHighlight') }}
+              />
             </h1>
             
             <p style={{
@@ -596,9 +756,9 @@ const Analysis = () => {
               margin: '0 auto',
               lineHeight: '1.6',
               fontWeight: '400'
-            }}>
-              Upload your marketing campaign data and get AI-powered insights with actionable recommendations in minutes.
-            </p>
+            }}
+            dangerouslySetInnerHTML={{ __html: t('hero.subtitle') }}
+            />
           </div>
 
           {/* Progress Steps */}
@@ -607,21 +767,55 @@ const Analysis = () => {
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center', 
-              gap: '1rem',
-              flexWrap: 'wrap'
+              gap: windowWidth < 768 ? '0.5rem' : windowWidth < 1024 ? '0.75rem' : '1rem',
+              flexWrap: 'nowrap',
+              overflow: 'hidden',
+              width: '100%',
+              maxWidth: '100%',
+              margin: '0 auto'
             }}>
               {[
-                { num: 1, label: 'Upload File', emoji: '📁' },
-                { num: 2, label: 'Analyze Campaigns', emoji: '🔍' },
-                { num: 3, label: 'Map Columns', emoji: '🔗' },
-                { num: 4, label: 'View Results', emoji: '📊' }
-              ].map((stepInfo, index) => (
-                <div key={stepInfo.num} style={{ display: 'flex', alignItems: 'center' }}>
+                { num: 1, label: t('progress.step1'), emoji: '📁' },
+                { num: 2, label: t('progress.step2'), emoji: '🔍' },
+                { num: 3, label: t('progress.step3'), emoji: '🔗' },
+                { num: 4, label: t('progress.step4'), emoji: '📊' }
+              ].map((stepInfo, index, arr) => {
+                // 화면 크기에 따른 동적 라벨 변경
+                const getDynamicLabel = (originalLabel, stepNum) => {
+                  if (windowWidth < 768) { // 모바일/작은 화면
+                    switch(stepNum) {
+                      case 1: return 'Upload';
+                      case 2: return 'Predict';
+                      case 3: return 'Map';
+                      case 4: return 'Analyze';
+                      default: return originalLabel;
+                    }
+                  } else if (windowWidth < 1024) { // 중간 화면
+                    switch(stepNum) {
+                      case 1: return 'Upload';
+                      case 2: return 'Predict';
+                      case 3: return 'Map';
+                      case 4: return 'Analyze';
+                      default: return originalLabel;
+                    }
+                  }
+                  return originalLabel;
+                };
+
+                const dynamicLabel = getDynamicLabel(stepInfo.label, stepInfo.num);
+                
+                                return (
+                  <div key={stepInfo.num} style={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    flex: '0 1 auto',
+                    minWidth: 0
+                  }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.75rem',
-                    padding: '1rem 1.5rem',
+                    gap: windowWidth < 768 ? '0.5rem' : '0.75rem',
+                    padding: windowWidth < 768 ? '0.6rem 0.8rem' : windowWidth < 1024 ? '0.8rem 1.2rem' : '1rem 1.5rem',
                     borderRadius: '16px',
                     background: step >= stepInfo.num 
                       ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
@@ -633,29 +827,45 @@ const Analysis = () => {
                       ? '0 8px 32px rgba(102, 126, 234, 0.25)'
                       : '0 4px 12px rgba(0, 0, 0, 0.05)',
                     transition: 'all 0.3s ease',
-                    transform: step >= stepInfo.num ? 'translateY(-2px)' : 'translateY(0)'
+                    transform: step >= stepInfo.num ? 'translateY(-2px)' : 'translateY(0)',
+                    width: '100%',
+                    minWidth: 0,
+                    overflow: 'hidden'
                   }}>
-                    <span className="tossface" style={{ fontSize: '1.3rem' }}>
+                    <span className="tossface" style={{ 
+                      fontSize: windowWidth < 768 ? '1.1rem' : '1.3rem',
+                      flexShrink: 0
+                    }}>
                       {stepInfo.emoji}
                     </span>
-                    <span style={{ fontWeight: '600', fontSize: '1rem' }}>
-                      {stepInfo.label}
+                    <span style={{ 
+                      fontWeight: '600', 
+                      fontSize: windowWidth < 768 ? '0.75rem' : windowWidth < 1024 ? '0.85rem' : '1rem',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      flex: '1',
+                      minWidth: 0
+                    }}>
+                      {dynamicLabel}
                     </span>
                   </div>
-                  {index < 3 && (
-                    <div style={{
-                      width: '4rem',
-                      height: '3px',
-                      margin: '0 1rem',
-                      background: step > stepInfo.num 
-                        ? 'linear-gradient(90deg, #667eea, #764ba2)'
-                        : 'rgba(0, 0, 0, 0.1)',
-                      borderRadius: '2px',
-                      transition: 'all 0.3s ease'
-                    }} />
-                  )}
+                        {index < arr.length - 1 && (
+        <div style={{
+          width: windowWidth < 768 ? '1rem' : windowWidth < 1024 ? '2rem' : '4rem',
+          height: '3px',
+          margin: windowWidth < 768 ? '0 0.25rem' : windowWidth < 1024 ? '0 0.5rem' : '0 1rem',
+          background: step > stepInfo.num 
+            ? 'linear-gradient(90deg, #667eea, #764ba2)'
+            : 'rgba(0, 0, 0, 0.1)',
+          borderRadius: '2px',
+          transition: 'all 0.3s ease',
+          flexShrink: 0
+        }} />
+      )}
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
 
@@ -680,7 +890,7 @@ const Analysis = () => {
                     fontWeight: '600',
                     marginBottom: '0.25rem'
                   }}>
-                    Oops! Something went wrong
+                    {t('errors.title')}
                   </h3>
                   <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.95rem' }}>
                     {error}
@@ -713,7 +923,7 @@ const Analysis = () => {
                   color: '#374151',
                   marginBottom: '1.5rem'
                 }}>
-                  Select Data Source
+                  {t('upload.title')}
                 </h3>
                 
                 {/* Visual Upload Area */}
@@ -737,21 +947,21 @@ const Analysis = () => {
                     <span className="tossface">📁</span>
                   </div>
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{
+                    {/* <div style={{
                       fontSize: '1.05rem',
                       fontWeight: 600,
                       color: '#374151',
                       marginBottom: '0.3rem'
                     }}>
-                      Upload your marketing data file
-                    </div>
+                      {t('upload.description')}
+                    </div> */}
                     <div style={{
                       color: '#6b7280',
                       fontSize: '0.95rem',
                       lineHeight: 1.6
                     }}>
-                      Supported formats: <b>CSV</b>, <b>Excel (.xlsx, .xls)</b>, <b>Parquet</b><br/>
-                      Max file size: 10MB
+                      {t('upload.supportedFormats')}<br/>
+                      {t('upload.maxFileSize')}
                     </div>
                   </div>
                 </div>
@@ -796,7 +1006,7 @@ const Analysis = () => {
                     }}
                   >
                     <Database size={18} />
-                    Use Built-in Dataset
+                    {t('buttons.useBuiltinDataset')}
                   </button>
                   
                   {/* Divider */}
@@ -807,7 +1017,7 @@ const Analysis = () => {
                     fontSize: '0.9rem',
                     fontWeight: '500'
                   }}>
-                    or
+                    {t('upload.or')}
                   </div>
                   
                   {/* File Upload Option */}
@@ -851,7 +1061,7 @@ const Analysis = () => {
                     }}
                   >
                     <FileText size={18} />
-                    File Upload
+                    {t('buttons.fileUpload')}
                   </label>
                 </div>
               </div>
@@ -914,7 +1124,7 @@ const Analysis = () => {
                   fontSize: '1rem',
                   marginBottom: '2rem'
                 }}>
-                  Analyzed {analysisResult.metadata?.rowCount?.toLocaleString()} rows of data
+                  {t('results.analyzedRows', { count: analysisResult.metadata?.rowCount?.toLocaleString() })}
                 </p>
                 
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -937,7 +1147,7 @@ const Analysis = () => {
                     }}
                   >
                     <span className="tossface">📊</span>
-                    Go to Dashboard
+                    {t('results.goToDashboard')}
                   </button>
                   
                   <button
@@ -959,7 +1169,7 @@ const Analysis = () => {
                     }}
                   >
                     <span className="tossface">🔄</span>
-                    New Analysis
+                    {t('buttons.newAnalysis')}
                   </button>
                 </div>
               </div>
@@ -1003,14 +1213,14 @@ const Analysis = () => {
                       gap: '0.5rem'
                     }}>
                       <span className="tossface">🌡️</span>
-                      Performance Heatmap
+                      {t('results.performanceHeatmap')}
                     </h3>
                     <p style={{
                       color: '#64748b',
                       margin: 0,
                       fontSize: '0.95rem'
                     }}>
-                      Visual representation of key metrics across campaigns
+                      {t('results.heatmapDescription')}
                     </p>
                   </div>
                   <div style={{ padding: '0 2rem 2rem' }}>
@@ -1031,26 +1241,26 @@ const Analysis = () => {
                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)'
               }}>
                 <div style={{ padding: '2rem 2rem 1rem' }}>
-                  <h3 style={{
-                    fontSize: '1.25rem',
-                    fontWeight: '700',
-                    color: '#1e293b',
-                    margin: 0,
-                    marginBottom: '0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}>
-                    <span className="tossface">🤖</span>
-                    AI Analysis Report
-                  </h3>
-                  <p style={{
-                    color: '#64748b',
-                    margin: 0,
-                    fontSize: '0.95rem'
-                  }}>
-                    Gemini AI-generated insights and recommendations
-                  </p>
+                                      <h3 style={{
+                      fontSize: '1.25rem',
+                      fontWeight: '700',
+                      color: '#1e293b',
+                      margin: 0,
+                      marginBottom: '0.5rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      <span className="tossface">🤖</span>
+                      {t('results.aiAnalysisReport')}
+                    </h3>
+                    <p style={{
+                      color: '#64748b',
+                      margin: 0,
+                      fontSize: '0.95rem'
+                    }}>
+                      {t('results.aiDescription')}
+                    </p>
                 </div>
                 <div style={{ padding: '0 2rem 2rem' }}>
                   <div style={{
@@ -1127,7 +1337,7 @@ const Analysis = () => {
               margin: 0,
               marginBottom: '1rem'
             }}>
-              Sign In Required
+              {t('errors.signInRequired')}
             </h3>
             
             <p style={{
@@ -1137,26 +1347,26 @@ const Analysis = () => {
               marginBottom: '2rem',
               lineHeight: '1.5'
             }}>
-              Please sign in to upload files and create analyses. Your data will be securely stored and accessible from any device.
+              {t('errors.signInMessage')}
             </p>
             
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button
-                onClick={() => setShowLoginModal(false)}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: 'rgba(255, 255, 255, 0.8)',
-                  color: '#374151',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  fontSize: '0.95rem',
-                  fontWeight: '600',
-                  backdropFilter: 'blur(10px)'
-                }}
-              >
-                Cancel
-              </button>
+                              <button
+                  onClick={() => setShowLoginModal(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    background: 'rgba(255, 255, 255, 0.8)',
+                    color: '#374151',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                >
+                  {t('buttons.cancel')}
+                </button>
               
               <SignInButton mode="modal">
                 <button
@@ -1177,7 +1387,7 @@ const Analysis = () => {
                   }}
                 >
                   <span className="tossface">🚀</span>
-                  Sign In
+                  {t('buttons.signIn')}
                 </button>
               </SignInButton>
             </div>
@@ -1229,9 +1439,9 @@ const Analysis = () => {
               margin: 0,
               marginBottom: '0.5rem'
             }}>
-              {step === 1 && 'Analyzing your file...'}
-              {step === 2 && 'Generating column mapping...'}
-              {step === 3 && 'Creating insights...'}
+              {step === 1 && t('loading.analyzing')}
+              {step === 2 && t('loading.mapping')}
+              {step === 3 && t('loading.creating')}
             </h3>
             
             <p style={{
@@ -1239,7 +1449,7 @@ const Analysis = () => {
               fontSize: '0.95rem',
               margin: 0
             }}>
-              This might take a few moments
+              {t('loading.subtitle')}
             </p>
           </div>
         </div>
@@ -1265,6 +1475,7 @@ const Analysis = () => {
 
 // Pivot Table Card Component
 const PivotTableCard = ({ level, data, formatNumber }) => {
+  const { t } = useLanguage();
   //console.log(`🔍 PivotTableCard rendering for ${level}:`, { data, type: typeof data, isArray: Array.isArray(data) });
   
   // 데이터 검증
@@ -1359,7 +1570,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
           margin: 0,
           fontSize: '0.85rem'
         }}>
-          {safeData.length} items analyzed
+          {t('results.itemsAnalyzed', { count: safeData.length })}
         </p>
       </div>
       
@@ -1397,7 +1608,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
                 }}>
-                  Impressions
+                  {t('pivotTables.impressions')}
                 </th>
                 <th style={{
                   textAlign: 'right',
@@ -1408,7 +1619,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
                 }}>
-                  CTR
+                  {t('pivotTables.ctr')}
                 </th>
                 <th style={{
                   textAlign: 'right',
@@ -1419,7 +1630,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
                 }}>
-                  Conversions
+                  {t('pivotTables.conversions')}
                 </th>
               </tr>
             </thead>
@@ -1494,7 +1705,7 @@ const PivotTableCard = ({ level, data, formatNumber }) => {
               fontStyle: 'italic'
             }}>
               <span className="tossface" style={{ marginRight: '0.5rem' }}>➕</span>
-              {safeData.length - 6} more items available in full report
+              {t('results.moreItems', { count: safeData.length - 6 })}
             </div>
           )}
         </div>
