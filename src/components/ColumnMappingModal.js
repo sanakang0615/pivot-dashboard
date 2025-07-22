@@ -10,7 +10,7 @@ const ColumnMappingModal = ({
   loading = false,
   isMainPage = false
 }) => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const [editedMapping, setEditedMapping] = useState({});
   const [showTip, setShowTip] = useState(false);
   const [columnRecommendations, setColumnRecommendations] = useState(null);
@@ -192,7 +192,7 @@ const ColumnMappingModal = ({
         {/* Header */}
         <div className="flex justify-between items-center mb-4 mt-4">
           <div className="flex items-center gap-2 relative">
-            <h2 className="text-2xl font-bold text-gray-800">Column Mapping Review</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{t('columnMapping.title')}</h2>
             {!isMainPage && (
               <button
                 onClick={() => setShowTip(!showTip)}
@@ -226,8 +226,8 @@ const ColumnMappingModal = ({
           {/* 매핑 설정 영역 */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between px-2 mb-2">
-              <span className="text-xs text-gray-500 font-semibold">업로드 파일의 컬럼</span>
-              <span className="text-xs text-gray-500 font-semibold">표준 컬럼명</span>
+              <span className="text-xs text-gray-500 font-semibold">{t('columnMapping.uploadedFileColumns')}</span>
+              <span className="text-xs text-gray-500 font-semibold">{t('columnMapping.standardColumnNames')}</span>
             </div>
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {(() => {
@@ -263,10 +263,10 @@ const ColumnMappingModal = ({
                         onChange={(e) => handleMappingChange(userColumn, e.target.value)}
                         className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]"
                       >
-                        <option value="">매핑 안함</option>
+                        <option value="">{t('columnMapping.noMapping')}</option>
                         
                         {/* Dimensions Section */}
-                        <optgroup label="Dimensions (계정, 캠페인, 광고 정보)">
+                        <optgroup label={t('columnMapping.dimensionsDescription')}>
                           {standardColumns.dimensions.map(col => (
                             <option key={col.key} value={col.key} className={col.required ? 'font-semibold' : ''}>
                               {col.name} {col.required ? '*' : ''}
@@ -275,7 +275,7 @@ const ColumnMappingModal = ({
                         </optgroup>
                         
                         {/* Metrics Section */}
-                        <optgroup label="Metrics (성과 지표 및 수치)">
+                        <optgroup label={t('columnMapping.metricsDescription')}>
                           {standardColumns.metrics.map(col => (
                             <option key={col.key} value={col.key} className={col.required ? 'font-semibold' : ''}>
                               {col.name} {col.required ? '*' : ''}
@@ -320,13 +320,31 @@ const ColumnMappingModal = ({
               
               const recommendationsArray = getRecommendationsArray(columnRecommendations?.recommendations);
               
+              // 메시지가 있는 경우 (그룹화할 컬럼이 없는 경우)
+              if (columnRecommendations?.message) {
+                return (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-3 text-black-800">{t('columnMapping.groupingRecommendation')}</h3>
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="tossface text-yellow-600">⚠️</span>
+                        <span className="text-sm font-medium text-yellow-800">{t('columnMapping.noGroupingAvailable')}</span>
+                      </div>
+                      <p className="text-sm text-yellow-700 leading-relaxed">
+                        {columnRecommendations.message}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              
               if (recommendationsArray.length === 0) {
                 return null; // 추천이 없으면 섹션을 표시하지 않음
               }
               
               return (
                 <div className="mb-6">
-                  <h3 className="text-lg font-semibold mb-3 text-blue-800">Grouping Recommendation</h3>
+                  <h3 className="text-lg font-semibold mb-3 text-black-800">{t('columnMapping.groupingRecommendation')}</h3>
                   <div className="space-y-3">
                     {recommendationsArray.map((rec, idx) => {
                       // 해당 그룹의 묶인 컬럼들 찾기
@@ -341,7 +359,7 @@ const ColumnMappingModal = ({
                             </h4>
                             <span className="tossface text-blue-500">→</span>
                             <span className="text-sm font-medium text-gray-900">
-                              추천 컬럼: <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">{rec.recommendedColumn}</span>
+                              {t('columnMapping.recommendedColumn')}: <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">{rec.recommendedColumn}</span>
                             </span>
                           </div>
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
@@ -358,7 +376,7 @@ const ColumnMappingModal = ({
                         {/* 묶인 컬럼들 표시 */}
                         {groupedItems.length > 0 && (
                           <div className="mb-4">
-                            <p className="text-xs text-gray-600 mb-2">묶인 컬럼들:</p>
+                            <p className="text-xs text-gray-600 mb-2">{t('columnMapping.groupedColumns')}:</p>
                             <div className="flex flex-wrap gap-2">
                               {groupedItems.map((item, itemIdx) => (
                                 <span key={itemIdx} className="text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded border border-gray-300">
@@ -371,7 +389,7 @@ const ColumnMappingModal = ({
                         
                         {rec.alternatives && rec.alternatives.length > 0 && (
                           <div className="mt-4">
-                            <p className="text-xs text-gray-600 mb-2">대안 컬럼:</p>
+                            <p className="text-xs text-gray-600 mb-2">{t('columnMapping.alternativeColumns')}:</p>
                             <div className="flex flex-wrap gap-2">
                               {rec.alternatives.map((alt, altIdx) => (
                                 <span key={altIdx} className="text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded border border-gray-300">
@@ -391,7 +409,7 @@ const ColumnMappingModal = ({
 
 
 
-            <h3 className="text-lg font-semibold mb-2">Unmapped Columns</h3>
+                            <h3 className="text-lg font-semibold mb-2">{t('columnMapping.unmappedColumns')}</h3>
 
             {/* 매핑되지 않은 컬럼들 (사용자 파일 + 표준 컬럼) */}
             {(mappingResult?.unmapped?.length > 0 || getUnmappedStandardColumns().length > 0) && (
@@ -400,7 +418,7 @@ const ColumnMappingModal = ({
                   {/* 왼쪽: 사용자 파일의 매핑되지 않은 컬럼들 */}
                   {mappingResult?.unmapped?.length > 0 && (
                     <div className="bg-gray-50 border border-gray-200 rounded p-3">
-                      <h4 className="font-medium text-gray-700 mb-3 text-sm">User File</h4>
+                      <h4 className="font-medium text-gray-700 mb-3 text-sm">{t('columnMapping.userFile')}</h4>
                       
                       {/* Dimensions */}
                       {(() => {
@@ -415,7 +433,7 @@ const ColumnMappingModal = ({
                         if (unmappedDimensions.length > 0) {
                           return (
                             <div className="mb-3">
-                              <h5 className="font-medium text-gray-600 mb-2 text-xs">Dimensions</h5>
+                              <h5 className="font-medium text-gray-600 mb-2 text-xs">{t('columnMapping.dimensions')}</h5>
                               <div className="flex flex-wrap gap-1">
                                 {unmappedDimensions.map((col, idx) => {
                                   const isRequired = standardColumns.dimensions.some(dim => 
@@ -454,7 +472,7 @@ const ColumnMappingModal = ({
                         if (unmappedMetrics.length > 0) {
                           return (
                             <div className="mb-3">
-                              <h5 className="font-medium text-gray-600 mb-2 text-xs">Metrics</h5>
+                              <h5 className="font-medium text-gray-600 mb-2 text-xs">{t('columnMapping.metrics')}</h5>
                               <div className="flex flex-wrap gap-1">
                                 {unmappedMetrics.map((col, idx) => {
                                   const isRequired = standardColumns.metrics.some(metric => 
@@ -483,7 +501,7 @@ const ColumnMappingModal = ({
                   {/* 오른쪽: 표준 컬럼 중 매핑되지 않은 것들 */}
                   {getUnmappedStandardColumns().length > 0 && (
                     <div className="bg-gray-50 border border-gray-200 rounded p-3">
-                      <h4 className="font-medium text-gray-700 mb-3 text-sm">Standard</h4>
+                      <h4 className="font-medium text-gray-700 mb-3 text-sm">{t('columnMapping.standard')}</h4>
                       
                       {/* Standard Dimensions */}
                       {(() => {
@@ -491,7 +509,7 @@ const ColumnMappingModal = ({
                         if (unmappedStandardDimensions.length > 0) {
                           return (
                             <div className="mb-3">
-                              <h5 className="font-medium text-gray-600 mb-2 text-xs">Dimensions</h5>
+                              <h5 className="font-medium text-gray-600 mb-2 text-xs">{t('columnMapping.dimensions')}</h5>
                               <div className="flex flex-wrap gap-1">
                                 {unmappedStandardDimensions.map((col, idx) => (
                                   <span key={col.key + '-' + idx} className={`px-2 py-1 rounded text-xs ${
@@ -515,7 +533,7 @@ const ColumnMappingModal = ({
                         if (unmappedStandardMetrics.length > 0) {
                           return (
                             <div className="mb-3">
-                              <h5 className="font-medium text-gray-600 mb-2 text-xs">Metrics</h5>
+                              <h5 className="font-medium text-gray-600 mb-2 text-xs">{t('columnMapping.metrics')}</h5>
                               <div className="flex flex-wrap gap-1">
                                 {unmappedStandardMetrics.map((col, idx) => (
                                   <span key={col.key + '-' + idx} className={`px-2 py-1 rounded text-xs ${
@@ -537,9 +555,9 @@ const ColumnMappingModal = ({
                 </div>
                 
                 <p className="text-gray-500 text-xs mt-3">
-                  <span className="font-medium">User File:</span> 업로드한 파일의 매핑되지 않은 컬럼들 | 
-                  <span className="font-medium"> Standard:</span> 표준 컬럼 중 매핑되지 않은 것들 | 
-                  <span className="text-red-600 font-medium">빨간색은 필수 컬럼</span>
+                  <span className="font-medium">{t('columnMapping.userFile')}:</span> {t('columnMapping.userFileUnmapped')} | 
+                  <span className="font-medium"> {t('columnMapping.standard')}:</span> {t('columnMapping.standardUnmapped')} | 
+                  <span className="text-red-600 font-medium">{t('columnMapping.redIsRequired')}</span>
                 </p>
               </div>
             )}
@@ -556,7 +574,7 @@ const ColumnMappingModal = ({
               disabled={loading}
               className="px-6 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
-              취소
+              {t('columnMapping.cancel')}
             </button>
             <button 
               onClick={handleConfirm}
@@ -566,10 +584,10 @@ const ColumnMappingModal = ({
               {loading ? (
                 <>
                   <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                  분석 중...
+                  {t('columnMapping.analyzing')}
                 </>
               ) : (
-                '분석 시작'
+                t('columnMapping.startAnalysis')
               )}
             </button>
           </div>

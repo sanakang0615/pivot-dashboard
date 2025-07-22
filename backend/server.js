@@ -964,6 +964,23 @@ app.post('/api/mapping/group-and-recommend', async (req, res) => {
     // 1단계: 숫자 제거하여 컬럼 그룹화
     const groupedColumns = groupSimilarColumns(columns);
     
+    // 그룹화된 컬럼이 없는 경우 메시지 반환
+    if (Object.keys(groupedColumns).length === 0) {
+      const isKorean = language === 'ko';
+      const message = isKorean 
+        ? '그룹화할 수 있는 컬럼이 없어 추천을 제공할 수 없습니다.\n\n예를 들어, "10% 재생률", "20% 재생률", "30% 재생률"과 같이 숫자만 다른 동일한 성격의 컬럼들이 있을 때 그룹화하여 추천해드립니다.'
+        : 'No grouping columns available for recommendations.\n\nFor example, this service groups and recommends columns like "10% play rate", "20% play rate", "30% play rate" where only the numbers differ but the column type is the same.';
+      
+      console.log('🔍 No grouped columns found, returning message:', message);
+      
+      return res.json({
+        success: true,
+        groupedColumns: {},
+        recommendations: { recommendations: [] },
+        message: message
+      });
+    }
+    
     // 2단계: LLM 기반 컬럼 추천
     const recommendations = await generateColumnRecommendations(groupedColumns, campaignContext, language);
     
@@ -1360,6 +1377,7 @@ app.post('/api/analysis/execute', async (req, res) => {
             rowCount: fileData.data.length,
             columns: Object.keys(columnMapping),
             columnMapping,
+            language: language,
             processedAt: new Date().toISOString()
           }
         });
@@ -1522,6 +1540,7 @@ app.post('/api/analysis/insights', async (req, res) => {
           { _id: analysisId, userId },
           { 
             insights,
+            'metadata.language': language,
             updatedAt: new Date()
           },
           { new: true }
@@ -1738,7 +1757,8 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
           metadata: {
             rowCount: rawData.length,
             columns: Object.keys(rawData[0] || {}),
-            fileType: fileExtension.slice(1)
+            fileType: fileExtension.slice(1),
+            language: 'en' // Default to English for file uploads
           }
         });
 
@@ -1797,7 +1817,7 @@ app.get('/api/analyses', async (req, res) => {
 
     const analyses = await Analysis.find({ userId })
       .sort({ createdAt: -1 })
-      .select('_id fileName fileSize createdAt updatedAt status');
+      .select('_id fileName fileSize createdAt updatedAt status metadata.language');
 
     res.json({
       success: true,
@@ -1807,7 +1827,8 @@ app.get('/api/analyses', async (req, res) => {
         fileSize: analysis.fileSize,
         createdAt: analysis.createdAt,
         updatedAt: analysis.updatedAt,
-        status: analysis.status
+        status: analysis.status,
+        language: analysis.metadata?.language || null
       }))
     });
   } catch (error) {
@@ -2512,7 +2533,7 @@ app.get('/api/datasets', async (req, res) => {
 // Process dataset for analysis
 app.post('/api/datasets/process', async (req, res) => {
   try {
-    const { datasetId } = req.body;
+    const { datasetId, language = 'en' } = req.body;
     const userId = req.headers['x-user-id'];
     
     if (!datasetId) {
@@ -2548,7 +2569,7 @@ app.post('/api/datasets/process', async (req, res) => {
     // 컬럼 매핑 추천
     let mappingResult;
     try {
-      mappingResult = await generateColumnMapping(columns);
+      mappingResult = await generateColumnMapping(columns, language);
     } catch (err) {
       mappingResult = generateSimpleMapping(columns);
     }
@@ -2564,7 +2585,8 @@ app.post('/api/datasets/process', async (req, res) => {
       rowCount: rows.length,
       metadata: {
         processedAt: new Date().toISOString(),
-        source: 'parquet_converted'
+        source: 'parquet_converted',
+        language: language
       }
     });
     

@@ -212,9 +212,26 @@ const Sidebar = ({ isOpen, onClose }) => {
                     }}>
                       {item.fileName}
                     </p>
-                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
-                      {new Date(item.createdAt).toLocaleDateString()}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </p>
+                      {item.language && (
+                        <span style={{
+                          fontSize: '0.65rem',
+                          fontWeight: '600',
+                          padding: '0.2rem 0.4rem',
+                          borderRadius: '4px',
+                          background: item.language === 'ko' ? 'rgba(102, 126, 234, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                          color: item.language === 'ko' ? '#667eea' : '#10b981',
+                          border: `1px solid ${item.language === 'ko' ? 'rgba(102, 126, 234, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {item.language}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {item._id !== currentAnalysisId && <ArrowRight size={14} color="#64748b" />}
                 </div>

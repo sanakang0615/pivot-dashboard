@@ -97,6 +97,31 @@
       "back": "Back",
       "continueToMapping": "Continue to Column Mapping",
       "processing": "Processing..."
+    },
+    "columnMapping": {
+      "title": "Column Mapping Review",
+      "uploadedFileColumns": "Uploaded file columns",
+      "standardColumnNames": "Standard column names",
+      "cancel": "Cancel",
+      "startAnalysis": "Start Analysis",
+      "analyzing": "Analyzing...",
+      "noMapping": "No mapping",
+      "dimensions": "Dimensions",
+      "metrics": "Metrics",
+      "dimensionsDescription": "Dimensions (Account, Campaign, Ad Information)",
+      "metricsDescription": "Metrics (Performance Indicators & Numbers)",
+      "userFile": "User File",
+      "standard": "Standard",
+      "unmappedColumns": "Unmapped Columns",
+      "userFileUnmapped": "Unmapped columns from uploaded file",
+      "standardUnmapped": "Unmapped columns among standard columns",
+      "redIsRequired": "Red is a required column",
+      "requiredField": "Required field",
+      "recommendedColumn": "Recommended Column",
+      "groupedColumns": "Grouped Columns",
+      "alternativeColumns": "Alternative Columns",
+      "noGroupingAvailable": "No Grouping Available",
+      "groupingRecommendation": "Grouping Recommendation"
     }
   },
   "ko": {
@@ -195,8 +220,33 @@
       "analyzing": "캠페인 분석 중...",
       "noData": "캠페인 분석 데이터를 사용할 수 없습니다.",
       "back": "뒤로",
-      "continueToMapping": "컬럼 매핑으로 계속",
+      "continueToMapping": "컬럼 매핑하기",
       "processing": "처리 중..."
+    },
+    "columnMapping": {
+      "title": "스마트 컬럼 매핑",
+      "uploadedFileColumns": "업로드 파일의 컬럼",
+      "standardColumnNames": "표준 컬럼명",
+      "cancel": "취소",
+      "startAnalysis": "분석 시작",
+      "analyzing": "분석 중...",
+      "noMapping": "매핑 안함",
+      "dimensions": "차원",
+      "metrics": "지표",
+      "dimensionsDescription": "차원 (계정, 캠페인, 광고 정보)",
+      "metricsDescription": "지표 (성과 지표 및 수치)",
+      "userFile": "사용자 파일",
+      "standard": "표준",
+      "unmappedColumns": "매핑되지 않은 컬럼",
+      "userFileUnmapped": "업로드한 파일의 매핑되지 않은 컬럼들",
+      "standardUnmapped": "표준 컬럼 중 매핑되지 않은 것들",
+      "redIsRequired": "빨간색은 필수 컬럼",
+      "requiredField": "필수 필드",
+      "recommendedColumn": "추천 컬럼",
+      "groupedColumns": "묶인 컬럼들",
+      "alternativeColumns": "대안 컬럼",
+      "noGroupingAvailable": "그룹화 불가",
+      "groupingRecommendation": "그룹화 추천"
     }
   }
 } 

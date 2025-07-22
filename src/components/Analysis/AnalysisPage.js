@@ -24,6 +24,8 @@ const AnalysisPage = () => {
   const [newFileName, setNewFileName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
   const [generatingInsights, setGeneratingInsights] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
+  const [hasGeneratedHeatmap, setHasGeneratedHeatmap] = useState(false);
   const heatmapRef = useRef(null);
   const contentRef = useRef(null);
   
@@ -364,24 +366,30 @@ const AnalysisPage = () => {
     }
   };
 
-  // 분석 데이터가 로드되면 히트맵 이미지 저장
+  // analysisId가 변경될 때 상태 리셋
   useEffect(() => {
-    if (analysis && analysis.pivotTables) {
+    setHasSaved(false);
+    setHasGeneratedHeatmap(false);
+  }, [analysisId]);
+  
+  useEffect(() => {
+    if (analysis && analysis.pivotTables && !hasSaved) {
       // For new analyses, a heatmap might not be rendered yet.
       // We save once with heatmap, or just save the data if no heatmap.
       const timer = setTimeout(async () => {
         // 히트맵 이미지 생성
         const heatmapImage = await generateHeatmapImage();
-        saveHeatmapImage(heatmapImage);
+        await saveHeatmapImage(heatmapImage);
+        setHasSaved(true); // 저장 완료 표시
       }, 1000); // Delay to allow heatmap to render
       
       return () => clearTimeout(timer);
     }
-  }, [analysis, userId]);
+  }, [analysis, userId, hasSaved]);
 
-  // 히트맵이 렌더링된 후 자동으로 이미지 생성
+  // 히트맵이 렌더링된 후 자동으로 이미지 생성 (한 번만)
   useEffect(() => {
-    if (analysis?.pivotTables?.Campaign && !analysis.heatmapImage) {
+    if (analysis?.pivotTables?.Campaign && !analysis.heatmapImage && !hasGeneratedHeatmap) {
       const generateImage = async () => {
         // 히트맵이 완전히 렌더링될 때까지 대기 (더 짧게 조정)
         await new Promise(resolve => setTimeout(resolve, 800));
@@ -389,13 +397,14 @@ const AnalysisPage = () => {
         const heatmapImage = await generateHeatmapImage();
         if (heatmapImage) {
           console.log('🔥 Auto-generated heatmap image and saved to analysis');
-          saveHeatmapImage(heatmapImage);
+          await saveHeatmapImage(heatmapImage);
+          setHasGeneratedHeatmap(true); // 생성 완료 표시
         }
       };
       
       generateImage();
     }
-  }, [analysis?.pivotTables?.Campaign, analysis?.heatmapImage]);
+  }, [analysis?.pivotTables?.Campaign, analysis?.heatmapImage, hasGeneratedHeatmap]);
 
   // 분석 데이터가 변경될 때마다 로깅
   // useEffect(() => {
