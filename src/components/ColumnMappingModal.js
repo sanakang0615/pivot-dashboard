@@ -80,19 +80,39 @@ const ColumnMappingModal = ({
       return;
     }
 
-    console.log('🔍 Fetching column recommendations for:', mappingResult.unmapped);
+    console.log('🔍 === FRONTEND: FETCHING COLUMN RECOMMENDATIONS ===');
+    console.log('🔍 Unmapped columns:', mappingResult.unmapped);
+    console.log('🔍 Campaign context:', mappingResult.campaignContext);
+    console.log('🔍 Campaign context type:', typeof mappingResult.campaignContext);
+    console.log('🔍 Campaign context keys:', mappingResult.campaignContext ? Object.keys(mappingResult.campaignContext) : 'null');
+    console.log('🔍 Brand:', mappingResult.campaignContext?.brand);
+    console.log('🔍 Product:', mappingResult.campaignContext?.product);
+    console.log('🔍 Industry:', mappingResult.campaignContext?.industry);
+    console.log('🔍 Target audience object:', mappingResult.campaignContext?.target_audience);
+    console.log('🔍 Target audience type:', typeof mappingResult.campaignContext?.target_audience);
+    console.log('🔍 Target audience keys:', mappingResult.campaignContext?.target_audience ? Object.keys(mappingResult.campaignContext.target_audience) : 'null');
+    console.log('🔍 Demographics:', mappingResult.campaignContext?.target_audience?.demographics);
+    console.log('🔍 Characteristics:', mappingResult.campaignContext?.target_audience?.characteristics);
+    console.log('🔍 Description:', mappingResult.campaignContext?.description);
+    console.log('🔍 Analysis reason:', mappingResult.campaignContext?.analysis_reason);
+    console.log('🔍 Language:', language);
+    
     setLoadingRecommendations(true);
     try {
+      const requestBody = {
+        columns: mappingResult.unmapped,
+        campaignContext: mappingResult.campaignContext,
+        language: language
+      };
+      
+      console.log('🔍 Request body:', requestBody);
+      
       const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/mapping/group-and-recommend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          columns: mappingResult.unmapped,
-          campaignContext: mappingResult.campaignContext,
-          language: language // 언어 정보 전달
-        })
+        body: JSON.stringify(requestBody)
       });
 
       console.log('🔍 API Response status:', response.status);
@@ -102,7 +122,12 @@ const ColumnMappingModal = ({
       if (data.success) {
         setColumnRecommendations(data);
         console.log('🔍 Column recommendations set:', data);
-        console.log('🔍 Recommendations count:', data.recommendations?.length || 0);
+        console.log('🔍 Has message:', !!data.message);
+        console.log('🔍 Has groupedColumns:', !!data.groupedColumns);
+        console.log('🔍 GroupedColumns keys:', Object.keys(data.groupedColumns || {}));
+        console.log('🔍 Has recommendations:', !!data.recommendations);
+        console.log('🔍 Recommendations type:', typeof data.recommendations);
+        console.log('🔍 Recommendations structure:', data.recommendations);
       } else {
         console.error('🔍 API returned success: false:', data);
       }
@@ -205,13 +230,15 @@ const ColumnMappingModal = ({
             
             {/* Campaign Context Tooltip */}
             {!isMainPage && showTip && mappingResult?.campaignContext && (
-              <div className="absolute top-full left-0 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg shadow-lg z-[9999] min-w-[300px]">
-                <h4 className="font-medium text-blue-800 mb-1 text-sm">🎯 Campaign Context</h4>
-                <p className="text-blue-700 text-xs">
-                  Brand: <span className="font-medium">{mappingResult.campaignContext.brand}</span> | 
-                  Product: <span className="font-medium">{mappingResult.campaignContext.product}</span> | 
-                  Industry: <span className="font-medium">{mappingResult.campaignContext.industry}</span>
-                </p>
+              <div className="absolute top-full left-0 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg shadow-lg z-[9999] min-w-[400px]">
+                <h4 className="font-medium text-blue-800 mb-2 text-sm">🎯 Campaign Context</h4>
+                <div className="text-blue-700 text-xs space-y-1">
+                  <div><span className="font-medium">Brand:</span> {mappingResult.campaignContext.brand}</div>
+                  <div><span className="font-medium">Product:</span> {mappingResult.campaignContext.product}</div>
+                  <div><span className="font-medium">Industry:</span> {mappingResult.campaignContext.industry}</div>
+                  <div><span className="font-medium">Target Audience:</span> {mappingResult.campaignContext.target_audience?.demographics}</div>
+                  <div><span className="font-medium">Target Characteristics:</span> {mappingResult.campaignContext.target_audience?.characteristics}</div>
+                </div>
               </div>
             )}
           </div>
@@ -345,6 +372,36 @@ const ColumnMappingModal = ({
               return (
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-3 text-black-800">{t('columnMapping.groupingRecommendation')}</h3>
+                  
+                  {/* 브랜드/고객 정보 표시 */}
+                  {mappingResult?.campaignContext && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="text-sm font-medium text-blue-800 mb-2">🎯 Campaign Context</h4>
+                      <div className="text-xs text-blue-700 space-y-1">
+                        {mappingResult.campaignContext.brand && (
+                          <div><span className="font-medium">Brand:</span> {mappingResult.campaignContext.brand}</div>
+                        )}
+                        {mappingResult.campaignContext.product && (
+                          <div><span className="font-medium">Product:</span> {mappingResult.campaignContext.product}</div>
+                        )}
+                        {mappingResult.campaignContext.industry && (
+                          <div><span className="font-medium">Industry:</span> {mappingResult.campaignContext.industry}</div>
+                        )}
+                        {mappingResult.campaignContext.target_audience?.demographics && (
+                          <div><span className="font-medium">Target Audience:</span> {mappingResult.campaignContext.target_audience.demographics}</div>
+                        )}
+                        {mappingResult.campaignContext.target_audience?.characteristics && (
+                          <div><span className="font-medium">Target Characteristics:</span> {mappingResult.campaignContext.target_audience.characteristics}</div>
+                        )}
+                        {mappingResult.campaignContext.description && (
+                          <div className="mt-2 pt-2 border-t border-blue-200">
+                            <span className="font-medium">Description:</span> {mappingResult.campaignContext.description}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="space-y-3">
                     {recommendationsArray.map((rec, idx) => {
                       // 해당 그룹의 묶인 컬럼들 찾기
@@ -368,7 +425,7 @@ const ColumnMappingModal = ({
                         </div>
                         
                         <div className="mb-3">
-                          <p className="text-xs text-gray-700 leading-relaxed">
+                          <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">
                             {rec.reason}
                           </p>
                         </div>

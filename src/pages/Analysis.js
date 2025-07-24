@@ -185,6 +185,17 @@ const Analysis = () => {
       }
       
       console.log('✅ Campaign analysis completed:', result);
+      console.log('🔍 === CAMPAIGN ANALYSIS RESULT DEBUG ===');
+      console.log('🔍 Result keys:', Object.keys(result));
+      console.log('🔍 Brand:', result.brand);
+      console.log('🔍 Product:', result.product);
+      console.log('🔍 Industry:', result.industry);
+      console.log('🔍 Target audience:', result.target_audience);
+      console.log('🔍 Description:', result.description);
+      console.log('🔍 Analysis reason:', result.analysis_reason);
+      console.log('🔍 Confidence:', result.confidence);
+      console.log('🔍 Total campaigns:', result.total_campaigns);
+      
       // result.success가 true인 경우, result 자체에 분석 데이터가 포함됨
       setCampaignAnalysis(result);
       setShowCampaignAnalysisModal(true);
@@ -205,14 +216,34 @@ const Analysis = () => {
     
     // 캠페인 분석 결과를 매핑 결과에 추가
     if (campaignAnalysis && mappingResult) {
+      console.log('🔍 === UPDATING MAPPING RESULT WITH CAMPAIGN CONTEXT ===');
+      console.log('🔍 Campaign analysis:', campaignAnalysis);
+      console.log('🔍 Campaign analysis type:', typeof campaignAnalysis);
+      console.log('🔍 Campaign analysis keys:', Object.keys(campaignAnalysis));
+      console.log('🔍 Target audience in campaignAnalysis:', campaignAnalysis.target_audience);
+      console.log('🔍 Description in campaignAnalysis:', campaignAnalysis.description);
+      console.log('🔍 Analysis reason in campaignAnalysis:', campaignAnalysis.analysis_reason);
+      
+      const campaignContext = {
+        brand: campaignAnalysis.brand,
+        product: campaignAnalysis.product,
+        industry: campaignAnalysis.industry,
+        target_audience: campaignAnalysis.target_audience,
+        confidence: campaignAnalysis.confidence,
+        description: campaignAnalysis.description,
+        analysis_reason: campaignAnalysis.analysis_reason,
+        total_campaigns: campaignAnalysis.total_campaigns
+      };
+      
+      console.log('🔍 Campaign context to be added:', campaignContext);
+      console.log('🔍 Campaign context keys:', Object.keys(campaignContext));
+      console.log('🔍 Target audience in context:', campaignContext.target_audience);
+      console.log('🔍 Description in context:', campaignContext.description);
+      console.log('🔍 Analysis reason in context:', campaignContext.analysis_reason);
+      
       setMappingResult({
         ...mappingResult,
-        campaignContext: {
-          brand: campaignAnalysis.brand,
-          product: campaignAnalysis.product,
-          industry: campaignAnalysis.industry,
-          totalCampaigns: campaignAnalysis.total_campaigns
-        }
+        campaignContext: campaignContext
       });
     }
     

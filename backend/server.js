@@ -959,6 +959,12 @@ app.post('/api/mapping/group-and-recommend', async (req, res) => {
     console.log('🔍 === COLUMN GROUPING AND RECOMMENDATION ===');
     console.log('📊 Input columns:', columns);
     console.log('🎯 Campaign context:', campaignContext);
+    console.log('🎯 Campaign context type:', typeof campaignContext);
+    console.log('🎯 Campaign context keys:', campaignContext ? Object.keys(campaignContext) : 'null');
+    console.log('🎯 Brand:', campaignContext?.brand);
+    console.log('🎯 Product:', campaignContext?.product);
+    console.log('🎯 Industry:', campaignContext?.industry);
+    console.log('🎯 Target audience:', campaignContext?.target_audience);
     console.log('🌐 Language:', language);
 
     // 1단계: 숫자 제거하여 컬럼 그룹화
@@ -1006,11 +1012,35 @@ app.post('/api/mapping/group-and-recommend', async (req, res) => {
 
 // 컬럼 그룹화 함수
 const groupSimilarColumns = (columns) => {
+  console.log('🔍 === GROUPING COLUMNS ===');
+  console.log('📊 Original columns:', columns);
+  
   const groups = {};
   
   columns.forEach((column, index) => {
-    // 숫자 제거 (예: "Video played to 25%" -> "Video played to %")
-    const normalizedColumn = column.replace(/\d+/g, '');
+    // 더 정교한 정규화 로직
+    let normalizedColumn = column;
+    
+    // 1. 숫자 제거 (기본)
+    normalizedColumn = normalizedColumn.replace(/\d+/g, '');
+    
+    // 2. 특정 패턴들 정규화
+    // "Video played to X%" 패턴
+    normalizedColumn = normalizedColumn.replace(/Video played to\s*%\s*/gi, 'Video played to %');
+    
+    // "X% play rate" 패턴
+    normalizedColumn = normalizedColumn.replace(/%\s*play\s*rate\s*/gi, '% play rate');
+    
+    // "X% completion" 패턴
+    normalizedColumn = normalizedColumn.replace(/%\s*completion\s*/gi, '% completion');
+    
+    // "X% view" 패턴
+    normalizedColumn = normalizedColumn.replace(/%\s*view\s*/gi, '% view');
+    
+    // 3. 공백 정규화
+    normalizedColumn = normalizedColumn.replace(/\s+/g, ' ').trim();
+    
+    console.log(`🔍 Column: "${column}" -> Normalized: "${normalizedColumn}"`);
     
     if (!groups[normalizedColumn]) {
       groups[normalizedColumn] = [];
@@ -1022,13 +1052,21 @@ const groupSimilarColumns = (columns) => {
     });
   });
   
+  console.log('🔍 All groups before filtering:', groups);
+  
   // 그룹이 2개 이상인 것만 반환
   const result = {};
   Object.entries(groups).forEach(([normalized, items]) => {
     if (items.length > 1) {
       result[normalized] = items;
+      console.log(`🔍 ✅ Group "${normalized}" has ${items.length} items:`, items.map(item => item.original));
+    } else {
+      console.log(`🔍 ❌ Group "${normalized}" has only ${items.length} item, skipping`);
     }
   });
+  
+  console.log('🔍 Final grouped columns:', result);
+  console.log('🔍 Number of groups found:', Object.keys(result).length);
   
   return result;
 };
@@ -1041,22 +1079,50 @@ const generateColumnRecommendations = async (groupedColumns, campaignContext, la
 
   try {
     const isKorean = language === 'ko';
+    
+    // 프롬프트 생성 전 디버깅
+    console.log('🔍 === PROMPT GENERATION DEBUG ===');
+    console.log('🔍 Campaign context received:', campaignContext);
+    console.log('🔍 Campaign context type:', typeof campaignContext);
+    console.log('🔍 Campaign context keys:', campaignContext ? Object.keys(campaignContext) : 'null');
+    console.log('🔍 Brand:', campaignContext?.brand);
+    console.log('🔍 Product:', campaignContext?.product);
+    console.log('🔍 Industry:', campaignContext?.industry);
+    console.log('🔍 Target audience object:', campaignContext?.target_audience);
+    console.log('🔍 Target audience type:', typeof campaignContext?.target_audience);
+    console.log('🔍 Target audience keys:', campaignContext?.target_audience ? Object.keys(campaignContext.target_audience) : 'null');
+    console.log('🔍 Demographics:', campaignContext?.target_audience?.demographics);
+    console.log('🔍 Characteristics:', campaignContext?.target_audience?.characteristics);
+    console.log('🔍 Description:', campaignContext?.description);
+    console.log('🔍 Analysis reason:', campaignContext?.analysis_reason);
+    
     const prompt = isKorean ? 
       `당신은 마케팅 데이터 분석 전문가입니다. 동일한 성격의 컬럼들 중에서 가장 적합한 컬럼을 선택하는 것이 당신의 임무입니다.
 
-캠페인 컨텍스트:
+🎯 **캠페인 컨텍스트 (반드시 고려해야 함):**
 - 브랜드: ${campaignContext?.brand || '알 수 없음'}
 - 제품: ${campaignContext?.product || '알 수 없음'}
 - 업계: ${campaignContext?.industry || '알 수 없음'}
 - 타겟 오디언스: ${campaignContext?.target_audience?.demographics || '알 수 없음'}
+- 타겟 특성: ${campaignContext?.target_audience?.characteristics || '알 수 없음'}
+- 캠페인 설명: ${campaignContext?.description || '알 수 없음'}
+- 분석 근거: ${campaignContext?.analysis_reason || '알 수 없음'}
 
-분석 규칙:
-1. 마케팅 성과 측정의 정확성과 효율성을 고려하세요
-2. 해당 브랜드/제품의 특성을 고려하세요
-3. 타겟 오디언스의 특성을 고려하세요
-4. 업계 표준과 베스트 프랙티스를 고려하세요
+📋 **분석 규칙 (모든 추천에서 반드시 적용):**
+1. **브랜드 특성 기반 선택**: ${campaignContext?.brand ? `"${campaignContext.brand}" 브랜드의 특성, 이미지, 브랜드 가치를 고려하여 선택하세요.` : '브랜드 특성을 고려하여 선택하세요.'}
+2. **제품 특성 기반 선택**: ${campaignContext?.product ? `"${campaignContext.product}" 제품의 특성, 기능, 사용 목적을 고려하여 선택하세요.` : '제품 특성을 고려하여 선택하세요.'}
+3. **업계 특성 기반 선택**: ${campaignContext?.industry ? `"${campaignContext.industry}" 업계의 표준, 베스트 프랙티스, 경쟁 환경을 고려하여 선택하세요.` : '업계 표준을 고려하여 선택하세요.'}
+4. **타겟 오디언스 기반 선택**: ${campaignContext?.target_audience?.demographics ? `"${campaignContext.target_audience.demographics}" 타겟 오디언스의 연령대, 성별, 소비 패턴을 고려하여 선택하세요.` : '타겟 오디언스 특성을 고려하여 선택하세요.'}
+5. **타겟 특성 기반 선택**: ${campaignContext?.target_audience?.characteristics ? `"${campaignContext.target_audience.characteristics}" 타겟의 구체적인 특성, 행동 패턴, 선호도를 고려하여 선택하세요.` : '타겟 특성을 고려하여 선택하세요.'}
+6. **캠페인 컨텍스트 기반 선택**: ${campaignContext?.description ? `"${campaignContext.description}" 캠페인 설명과 목적을 고려하여 선택하세요.` : '캠페인 컨텍스트를 고려하여 선택하세요.'}
+7. **마케팅 성과 측정의 정확성과 효율성을 고려하세요**
 
-각 그룹에서 가장 적합한 컬럼을 선택하고 근거를 제공해주세요.
+⚠️ **중요**: 모든 추천 근거(reason)에서 반드시 위의 브랜드, 제품, 업계, 타겟 오디언스, 타겟 특성 정보를 구체적으로 언급하고, 왜 그 특성이 해당 컬럼 선택에 영향을 미치는지 설명해야 합니다.
+
+📝 **추천 근거 작성 예시**:
+- Nike 스포츠웨어 브랜드라면: "Nike 브랜드의 스포츠웨어 특성상 사용자 참여도와 브랜드 인지도가 중요한 지표이므로, 'Video played to 100%'가 가장 적합합니다. 스포츠 콘텐츠는 완전한 시청이 브랜드 충성도와 구매 의도에 직접적으로 연결되며, Nike의 젊은 타겟 오디언스는 완전한 경험을 추구하는 경향이 있습니다."
+- 스포츠웨어 업계라면: "스포츠웨어 업계 특성상 제품의 기능성과 성능이 중요하므로, 'Video played to 75%'가 적합합니다. 소비자들은 제품의 핵심 기능을 파악한 후 구매 결정을 내리는 경향이 있으며, 완전한 시청보다는 핵심 정보 전달이 효율적입니다."
+- 젊은 타겟 오디언스라면: "젊은 타겟 오디언스는 짧은 주의집중 시간과 빠른 정보 소비 패턴을 가지므로, 'Video played to 25%'가 더 현실적인 성과 지표입니다. 이들은 짧은 시간 내에 핵심 메시지를 파악하려는 경향이 있어 초기 참여도가 중요합니다."
 
 분석할 컬럼 그룹:
 ${Object.entries(groupedColumns).map(([normalized, items]) => {
@@ -1070,26 +1136,37 @@ ${Object.entries(groupedColumns).map(([normalized, items]) => {
     {
       "group": "그룹명",
       "recommendedColumn": "추천 컬럼명",
-      "reason": "추천 근거 (브랜드/제품 특성을 고려한 상세한 설명)",
+      "reason": "추천 근거 (반드시 브랜드/제품/업계/타겟 오디언스 특성을 구체적으로 언급하고, 왜 그 특성이 해당 컬럼 선택에 영향을 미치는지 상세히 설명)",
       "alternatives": ["대안 컬럼1", "대안 컬럼2"]
     }
   ]
 }` :
       `You are a marketing data analysis expert. Your task is to select the most suitable column from columns with similar characteristics.
 
-Campaign Context:
+🎯 **CAMPAIGN CONTEXT (MUST CONSIDER):**
 - Brand: ${campaignContext?.brand || 'Unknown'}
 - Product: ${campaignContext?.product || 'Unknown'}
 - Industry: ${campaignContext?.industry || 'Unknown'}
 - Target Audience: ${campaignContext?.target_audience?.demographics || 'Unknown'}
+- Target Characteristics: ${campaignContext?.target_audience?.characteristics || 'Unknown'}
+- Campaign Description: ${campaignContext?.description || 'Unknown'}
+- Analysis Reason: ${campaignContext?.analysis_reason || 'Unknown'}
 
-Analysis Rules:
-1. Consider accuracy and efficiency of marketing performance measurement
-2. Consider the characteristics of the brand/product
-3. Consider the characteristics of the target audience
-4. Consider industry standards and best practices
+📋 **ANALYSIS RULES (MUST APPLY TO ALL RECOMMENDATIONS):**
+1. **Brand-based Selection**: ${campaignContext?.brand ? `Consider the characteristics, image, and brand values of "${campaignContext.brand}" brand when selecting.` : 'Consider brand characteristics when selecting.'}
+2. **Product-based Selection**: ${campaignContext?.product ? `Consider the characteristics, functionality, and usage purpose of "${campaignContext.product}" product when selecting.` : 'Consider product characteristics when selecting.'}
+3. **Industry-based Selection**: ${campaignContext?.industry ? `Consider the standards, best practices, and competitive environment of "${campaignContext.industry}" industry when selecting.` : 'Consider industry standards when selecting.'}
+4. **Target Audience-based Selection**: ${campaignContext?.target_audience?.demographics ? `Consider the age group, gender, and consumption patterns of "${campaignContext.target_audience.demographics}" target audience when selecting.` : 'Consider target audience characteristics when selecting.'}
+5. **Target Characteristics-based Selection**: ${campaignContext?.target_audience?.characteristics ? `Consider the specific characteristics, behavior patterns, and preferences of "${campaignContext.target_audience.characteristics}" target characteristics when selecting.` : 'Consider target characteristics when selecting.'}
+6. **Campaign Context-based Selection**: ${campaignContext?.description ? `Consider the campaign description and objectives of "${campaignContext.description}" when selecting.` : 'Consider campaign context when selecting.'}
+7. **Consider accuracy and efficiency of marketing performance measurement**
 
-Select the most suitable column from each group and provide reasoning.
+⚠️ **IMPORTANT**: In every recommendation reason, you MUST specifically mention the above brand, product, industry, target audience, and target characteristics information and explain why these characteristics influence the column selection.
+
+📝 **RECOMMENDATION REASON EXAMPLES**:
+- If brand is Nike sports apparel: "Given Nike's sports apparel brand characteristics where user engagement and brand awareness are crucial metrics, 'Video played to 100%' is most suitable. Sports content requires complete viewing as it directly correlates with brand loyalty and purchase intent, and Nike's young target audience tends to seek complete experiences."
+- If industry is sports apparel: "Given sports apparel industry characteristics where product functionality and performance are important, 'Video played to 75%' is suitable. Consumers tend to make purchase decisions after understanding core product features, and efficient key information delivery is more effective than complete viewing."
+- If target audience is young demographic: "Young target audiences have short attention spans and fast information consumption patterns, making 'Video played to 25%' a more realistic performance indicator. They tend to grasp key messages quickly, making early engagement crucial."
 
 Column groups to analyze:
 ${Object.entries(groupedColumns).map(([normalized, items]) => {
@@ -1103,15 +1180,36 @@ Respond only in the following JSON format (no other text):
     {
       "group": "group_name",
       "recommendedColumn": "recommended_column_name",
-      "reason": "recommendation_reason (detailed explanation considering brand/product characteristics)",
+      "reason": "recommendation_reason (MUST specifically mention brand/product/industry/target audience characteristics and explain why these influence the column selection in detail)",
       "alternatives": ["alternative_column1", "alternative_column2"]
     }
   ]
 }`;
 
+    // 프롬프트 생성 후 디버깅
+    console.log('🔍 === GENERATED PROMPT DEBUG ===');
+    console.log('🔍 Prompt length:', prompt.length);
+    console.log('🔍 Prompt preview (first 500 chars):', prompt.substring(0, 500));
+    console.log('🔍 Campaign context in prompt:');
+    console.log('  - Brand:', campaignContext?.brand || '알 수 없음');
+    console.log('  - Product:', campaignContext?.product || '알 수 없음');
+    console.log('  - Industry:', campaignContext?.industry || '알 수 없음');
+    console.log('  - Target Audience:', campaignContext?.target_audience?.demographics || '알 수 없음');
+    console.log('  - Target Characteristics:', campaignContext?.target_audience?.characteristics || '알 수 없음');
+    console.log('  - Description:', campaignContext?.description || '알 수 없음');
+    console.log('  - Analysis Reason:', campaignContext?.analysis_reason || '알 수 없음');
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        {
+          role: "system",
+          content: isKorean ? 
+            "당신은 마케팅 데이터 분석 전문가입니다. 컬럼 추천 시 반드시 브랜드, 제품, 업계, 타겟 오디언스 특성을 구체적으로 언급하고 설명해야 합니다. 모든 추천 근거에서 이 정보들을 활용하여 선택의 이유를 명확히 설명하세요." :
+            "You are a marketing data analysis expert. When recommending columns, you MUST specifically mention and explain brand, product, industry, and target audience characteristics. Use this information in all recommendation reasons to clearly explain the rationale for your choices."
+        },
+        { role: "user", content: prompt }
+      ],
       max_tokens: 2000,
       temperature: 0.3,
     });
@@ -1235,14 +1333,30 @@ app.post('/api/analysis/campaigns', async (req, res) => {
     // 캠페인 분석 실행
     const campaignAnalysis = await analyzeCampaigns(fileData, columnMapping, language);
     
+    console.log('🔍 === CAMPAIGN ANALYSIS API RESPONSE DEBUG ===');
+    console.log('🔍 Campaign analysis result:', campaignAnalysis);
+    console.log('🔍 Success:', campaignAnalysis.success);
+    console.log('🔍 Brand:', campaignAnalysis.brand);
+    console.log('🔍 Product:', campaignAnalysis.product);
+    console.log('🔍 Industry:', campaignAnalysis.industry);
+    console.log('🔍 Target audience:', campaignAnalysis.target_audience);
+    console.log('🔍 Description:', campaignAnalysis.description);
+    console.log('🔍 Analysis reason:', campaignAnalysis.analysis_reason);
+    console.log('🔍 Confidence:', campaignAnalysis.confidence);
+    console.log('🔍 Total campaigns:', campaignAnalysis.total_campaigns);
+    
     if (!campaignAnalysis.success) {
       return res.status(500).json(campaignAnalysis);
     }
 
-    res.json({
+    const response = {
       success: true,
       ...campaignAnalysis
-    });
+    };
+    
+    console.log('🔍 Final API response:', response);
+    
+    res.json(response);
 
   } catch (error) {
     console.error('Campaign analysis error:', error);

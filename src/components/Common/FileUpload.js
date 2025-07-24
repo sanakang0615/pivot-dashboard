@@ -157,14 +157,25 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
     
     // 캠페인 분석 결과를 매핑 결과에 추가
     if (campaignAnalysis && mappingResult) {
+      console.log('🔍 === UPDATING MAPPING RESULT WITH CAMPAIGN CONTEXT ===');
+      console.log('🔍 Campaign analysis:', campaignAnalysis);
+      
+      const campaignContext = {
+        brand: campaignAnalysis.brand,
+        product: campaignAnalysis.product,
+        industry: campaignAnalysis.industry,
+        target_audience: campaignAnalysis.target_audience,
+        confidence: campaignAnalysis.confidence,
+        description: campaignAnalysis.description,
+        analysis_reason: campaignAnalysis.analysis_reason,
+        total_campaigns: campaignAnalysis.total_campaigns
+      };
+      
+      console.log('🔍 Campaign context to be added:', campaignContext);
+      
       setMappingResult({
         ...mappingResult,
-        campaignContext: {
-          brand: campaignAnalysis.brand,
-          product: campaignAnalysis.product,
-          industry: campaignAnalysis.industry,
-          totalCampaigns: campaignAnalysis.total_campaigns
-        }
+        campaignContext: campaignContext
       });
     }
     
