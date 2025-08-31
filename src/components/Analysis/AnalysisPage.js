@@ -9,6 +9,7 @@ import Sidebar from '../Common/Sidebar';
 import ChatSidebar from '../Chat/ChatSidebar';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Globe, ChevronDown } from 'lucide-react';
+import { config } from '../../utils/config';
 
 const AnalysisPage = () => {
   const { analysisId } = useParams();
@@ -60,7 +61,7 @@ const AnalysisPage = () => {
     
     setIsRenaming(true);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${analysisId}`, {
+      const res = await fetch(`${config.api.baseURL}/api/analyses/${analysisId}`, {
         method: 'PATCH',
         headers: { 
           'x-user-id': userId,
@@ -152,7 +153,7 @@ const AnalysisPage = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/${analysisId}`, {
+      const response = await fetch(`${config.api.baseURL}/api/analysis/${analysisId}`, {
         headers: {
           'x-user-id': userId,
           'Content-Type': 'application/json'
@@ -250,7 +251,7 @@ const AnalysisPage = () => {
         return;
       }
 
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses`, {
+      const response = await fetch(`${config.api.baseURL}/api/analyses`, {
         headers: {
           'x-user-id': userId,
           'Content-Type': 'application/json'
@@ -316,7 +317,7 @@ const AnalysisPage = () => {
     }
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/save`, {
+      const response = await fetch(`${config.api.baseURL}/api/analysis/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -461,7 +462,7 @@ const AnalysisPage = () => {
     
     try {
       console.log('🤖 === GENERATING AI INSIGHTS ===');
-      console.log('🔗 API URL:', process.env.REACT_APP_API_URL || 'http://localhost:3001');
+      console.log('🔗 API URL:', config.api.baseURL);
       console.log('👤 User ID:', userId);
       console.log('📊 Analysis ID:', analysis._id || analysis.analysisId);
       console.log('📊 Validated pivot tables:', {
@@ -480,7 +481,7 @@ const AnalysisPage = () => {
         bodySize: JSON.stringify(requestBody).length
       });
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/insights`, {
+      const response = await fetch(`${config.api.baseURL}/api/analysis/insights`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

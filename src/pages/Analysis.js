@@ -8,6 +8,7 @@ import CampaignAnalysisModal from '../components/CampaignAnalysisModal';
 import HeatmapChart from '../components/HeatmapChart';
 import Sidebar from '../components/Common/Sidebar';
 import DatasetSelector from '../components/Common/DatasetSelector';
+import { config } from '../utils/config';
 
 const Analysis = () => {
   const { userId, isSignedIn } = useAuth();
@@ -101,7 +102,7 @@ const Analysis = () => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/upload/extract-columns`, {
+      const response = await fetch(`${config.api.baseURL}/api/upload/extract-columns`, {
         method: 'POST',
         body: formData
       });
@@ -129,7 +130,7 @@ const Analysis = () => {
     setLoading(true);
     
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/mapping/suggest`, {
+      const response = await fetch(`${config.api.baseURL}/api/mapping/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -164,7 +165,7 @@ const Analysis = () => {
     try {
       console.log('🔍 === ANALYZING CAMPAIGNS ===');
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/campaigns`, {
+      const response = await fetch(`${config.api.baseURL}/api/analysis/campaigns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -262,13 +263,13 @@ const Analysis = () => {
     
     try {
       console.log('🚀 === STEP 1: EXECUTING ANALYSIS ===');
-      console.log('🔗 API URL:', process.env.REACT_APP_API_URL || 'http://localhost:3001');
+      console.log('🔗 API URL:', config.api.baseURL);
       console.log('👤 User ID:', userId);
       console.log('📁 File ID:', mappingResult.fileId);
       console.log('🗺️ Column Mapping:', confirmedMapping);
       
       // 1단계: 피벗테이블, 히트맵 생성
-      const analysisResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/execute`, {
+      const analysisResponse = await fetch(`${config.api.baseURL}/api/analysis/execute`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -333,7 +334,7 @@ const Analysis = () => {
         console.log('🤖 === STEP 2: GENERATING AI INSIGHTS ===');
         
         try {
-          const insightsResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/insights`, {
+          const insightsResponse = await fetch(`${config.api.baseURL}/api/analysis/insights`, {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',

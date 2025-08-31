@@ -5,6 +5,7 @@ import {
   Menu, X, FileText, FolderOpen, ArrowRight,
   BarChart3, Plus, MoreVertical, Edit, Trash2
 } from 'lucide-react';
+import { config } from '../../utils/config';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const fetchAnalyses = async () => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses`, {
+      const res = await fetch(`${config.api.baseURL}/api/analyses`, {
         headers: { 'x-user-id': userId }
       });
       const data = await res.json();
@@ -63,7 +64,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     
     setIsLoading(true);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${deleteModal._id}`, {
+      const res = await fetch(`${config.api.baseURL}/api/analyses/${deleteModal._id}`, {
         method: 'DELETE',
         headers: { 'x-user-id': userId }
       });
@@ -93,7 +94,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     
     setIsLoading(true);
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${renameModal._id}`, {
+      const res = await fetch(`${config.api.baseURL}/api/analyses/${renameModal._id}`, {
         method: 'PATCH',
         headers: { 
           'x-user-id': userId,

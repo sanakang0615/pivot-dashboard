@@ -3,6 +3,7 @@ import { Database, FileText, ArrowRight, CheckCircle, Loader } from 'lucide-reac
 import { getDatasetInfo } from '../../utils/parquetReader';
 import { useAuth } from '@clerk/clerk-react';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { config } from '../../utils/config';
 
 const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
   const { userId, isSignedIn } = useAuth();
@@ -44,7 +45,7 @@ const DatasetSelector = ({ onDatasetSelected, onCancel }) => {
 
     try {
       // 백엔드 API를 통해 데이터셋 처리
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/datasets/process`, {
+      const response = await fetch(`${config.api.baseURL}/api/datasets/process`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

@@ -4,6 +4,7 @@ import { Upload, X, FileText, ArrowRight, CheckCircle } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ColumnMappingModal from '../ColumnMappingModal';
 import CampaignAnalysisModal from '../CampaignAnalysisModal';
+import { config } from '../../utils/config';
 
 const FileUpload = ({ onFileUploaded, onCancel }) => {
   const { userId, isLoaded, isSignedIn } = useAuth();
@@ -51,7 +52,7 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/upload/extract-columns`, {
+      const response = await fetch(`${config.api.baseURL}/api/upload/extract-columns`, {
         method: 'POST',
         body: formData
       });
@@ -80,7 +81,7 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
     setLoading(true);
     
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/mapping/suggest`, {
+      const response = await fetch(`${config.api.baseURL}/api/mapping/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -116,7 +117,7 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
     try {
       console.log('🔍 === ANALYZING CAMPAIGNS ===');
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/campaigns`, {
+      const response = await fetch(`${config.api.baseURL}/api/analysis/campaigns`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -191,7 +192,7 @@ const FileUpload = ({ onFileUploaded, onCancel }) => {
     setError(null);
     
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analysis/execute`, {
+      const response = await fetch(`${config.api.baseURL}/api/analysis/execute`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import ProgressSteps from './Common/ProgressSteps';
+import { config } from '../utils/config';
 
 const ColumnMappingModal = ({ 
   isOpen, 
@@ -107,7 +108,7 @@ const ColumnMappingModal = ({
       
       console.log('🔍 Request body:', requestBody);
       
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/mapping/group-and-recommend`, {
+      const response = await fetch(`${config.api.baseURL}/api/mapping/group-and-recommend`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

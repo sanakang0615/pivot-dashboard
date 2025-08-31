@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { FullPageLoader } from '../Common/LoadingSpinner';
 import DashboardLayout from './DashboardLayout';
+import { config } from '../../utils/config';
 
 const Dashboard = () => {
   const { user, isLoaded } = useCurrentUser();
@@ -54,7 +55,7 @@ const Dashboard = () => {
     setError(null);
     
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses`, {
+      const res = await fetch(`${config.api.baseURL}/api/analyses`, {
         headers: { 
           'x-user-id': userId,
           'Content-Type': 'application/json'
@@ -85,7 +86,7 @@ const Dashboard = () => {
     if (!deleteModal) return;
     
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/analyses/${deleteModal._id}`, {
+      const response = await fetch(`${config.api.baseURL}/api/analyses/${deleteModal._id}`, {
         method: 'DELETE',
         headers: { 'x-user-id': userId }
       });

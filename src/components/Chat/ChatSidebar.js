@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import ContextSelector from './ContextSelector';
 import ChatMessage from './ChatMessage';
+import { config } from '../../utils/config';
 
 const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const loadChatHistory = async () => {
     try {
       const analysisId = analysisData?._id || analysisData?.analysisId;
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/chat/${analysisId}`, {
+      const response = await fetch(`${config.api.baseURL}/api/chat/${analysisId}`, {
         headers: {
           'x-user-id': userId,
           'Content-Type': 'application/json'
@@ -108,7 +109,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
   const saveChatHistory = async (newMessages) => {
     try {
       const analysisId = analysisData?._id || analysisData?.analysisId;
-      await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/chat/${analysisId}`, {
+              await fetch(`${config.api.baseURL}/api/chat/${analysisId}`, {
         method: 'POST',
         headers: {
           'x-user-id': userId,
@@ -246,7 +247,7 @@ const ChatSidebar = ({ isOpen, onClose, analysisData }) => {
       }
 
       // Send to Gemini API
-      const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/chat/send`;
+      const apiUrl = `${config.api.baseURL}/api/chat/send`;
       console.log('🌐 === SENDING REQUEST ===');
       console.log('🌐 API URL:', apiUrl);
       console.log('🔧 REACT_APP_API_URL:', process.env.REACT_APP_API_URL);

@@ -2,7 +2,9 @@
 export const config = {
   // API Configuration
   api: {
-    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001',
+    baseURL: process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' 
+      ? 'https://pivot-dashboard-production.up.railway.app' // Railway 배포 URL
+      : 'http://localhost:3001'),
     timeout: 30000, // 30 seconds
     retryAttempts: 3,
     retryDelay: 1000 // 1 second
