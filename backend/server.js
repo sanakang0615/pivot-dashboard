@@ -48,15 +48,15 @@ async function connectDB() {
     });
 
     mongoose.connection.on('connected', () => {
-      console.log('✅ MongoDB Atlas connected successfully');
+      console.log('MongoDB Atlas connected successfully');
     });
 
     mongoose.connection.on('error', (err) => {
-      console.error('❌ MongoDB connection error:', err);
+      console.error('MongoDB connection error:', err);
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.log('⚠️ MongoDB disconnected');
+      console.log('MongoDB disconnected');
     });
 
     process.on('SIGINT', async () => {
@@ -216,7 +216,7 @@ const processExcel = (buffer) => {
 // 간단한 parquet 데이터셋 읽기 함수 (Python 변환 사용)
 const readParquetDataset = async (datasetId) => {
   try {
-    console.log(`📊 Reading dataset: ${datasetId}`);
+    console.log(`Reading dataset: ${datasetId}`);
     
     // ParquetConverter 인스턴스 생성
     const dataDirectory = path.join(__dirname, 'data');
@@ -235,7 +235,7 @@ const readParquetDataset = async (datasetId) => {
     
     const columns = Object.keys(processedData[0] || {});
     
-    console.log(`📊 Dataset loaded successfully:`, {
+    console.log(`Dataset loaded successfully:`, {
       datasetId,
       rowCount: processedData.length,
       columnCount: columns.length,
@@ -250,7 +250,7 @@ const readParquetDataset = async (datasetId) => {
     };
     
   } catch (error) {
-    console.error(`❌ Error reading dataset ${datasetId}:`, error);
+    console.error(`Error reading dataset ${datasetId}:`, error);
     
     // 더 구체적인 에러 메시지
     if (error.code === 'ENOENT') {
@@ -292,21 +292,21 @@ app.get('/api/debug/files', (req, res) => {
 
 // Simple AI insights placeholder (if Gemini API not available)
 const generateSimpleInsights = (data) => {
-  return `# 📊 분석 완료\n\n## 요약\n- 데이터 업로드 및 처리가 완료되었습니다\n- 피벗 테이블이 생성되었습니다\n- 추가적인 AI 분석을 위해서는 OpenAI API 키가 필요합니다\n\n## 다음 단계\n1. 생성된 피벗 테이블을 확인하세요\n2. 성과 히트맵을 통해 시각적 분석을 수행하세요\n3. 더 자세한 분석을 원하시면 관리자에게 API 설정을 요청하세요\n\n*더 상세한 AI 분석을 위해 OpenAI API를 설정해주세요.*`;
+  return `# 분석 완료\n\n## 요약\n- 데이터 업로드 및 처리가 완료되었습니다\n- 피벗 테이블이 생성되었습니다\n- 추가적인 AI 분석을 위해서는 OpenAI API 키가 필요합니다\n\n## 다음 단계\n1. 생성된 피벗 테이블을 확인하세요\n2. 성과 히트맵을 통해 시각적 분석을 수행하세요\n3. 더 자세한 분석을 원하시면 관리자에게 API 설정을 요청하세요\n\n*더 상세한 AI 분석을 위해 OpenAI API를 설정해주세요.*`;
 };
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // AI 인사이트 생성 함수 (수정된 버전)
 const generateAIInsights = async (pivotTables, language = 'en') => {
-  console.log('🤖 === GENERATE AI INSIGHTS START ===');
-  console.log('🤖 Data available:', pivotTables ? Object.keys(pivotTables) : 'No data');
-  console.log('🤖 Full pivot tables data:', JSON.stringify(pivotTables, null, 2));
+  console.log('=== GENERATE AI INSIGHTS START ===');
+  console.log('Data available:', pivotTables ? Object.keys(pivotTables) : 'No data');
+  console.log('Full pivot tables data:', JSON.stringify(pivotTables, null, 2));
   
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   
   if (!OPENAI_API_KEY) {
-    console.log('⚠️ No OpenAI API key found, using simple insights');
+    console.log('No OpenAI API key found, using simple insights');
     return generateSimpleInsights([]);
   }
 
@@ -393,11 +393,11 @@ ${performanceDistribution.map(item =>
 
 당신의 임무는 다음 광고 성과 데이터를 분석하고 깊은 마케팅 전문성과 전략적 사고를 보여주는 포괄적이고 엔터프라이즈급 분석 보고서를 제공하는 것입니다.
 
-# 📊 캠페인 성과 데이터
+# 캠페인 성과 데이터
 
 ${dataContext}
 
-# 🎯 분석 요구사항
+# 분석 요구사항
 
 다음 구조로 **한국어** 전문 마케팅 분석 보고서를 작성하세요:
 
@@ -470,11 +470,11 @@ ${dataContext}
 
 Your task is to analyze the following advertising performance data and provide a comprehensive, enterprise-grade analysis report that demonstrates deep marketing expertise and strategic thinking.
 
-# 📊 CAMPAIGN PERFORMANCE DATA
+# CAMPAIGN PERFORMANCE DATA
 
 ${dataContext}
 
-# 🎯 ANALYSIS REQUIREMENTS
+# ANALYSIS REQUIREMENTS
 
 Create a professional marketing analysis report in **English** with the following structure:
 
@@ -544,10 +544,10 @@ Advanced strategic recommendations:
 - Limit bullet points - use analytical prose that demonstrates expertise
 - Include numerical evidence for all claims and recommendations`;
 
-    console.log('📝 Prompt length:', prompt.length);
-    console.log('📝 Data context preview:', dataContext.substring(0, 500) + '...');
+    console.log('Prompt length:', prompt.length);
+    console.log('Data context preview:', dataContext.substring(0, 500) + '...');
 
-    console.log('🚀 === CALLING OPENAI API ===');
+    console.log('=== CALLING OPENAI API ===');
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -564,30 +564,30 @@ Advanced strategic recommendations:
       temperature: 0.6,
     });
     
-    console.log('✅ === OPENAI API RESPONSE RECEIVED ===');
+    console.log('=== OPENAI API RESPONSE RECEIVED ===');
     
     if (!completion.choices || completion.choices.length === 0) {
-      console.error('❌ No choices in OpenAI response');
+      console.error('No choices in OpenAI response');
       throw new Error('OpenAI API returned no choices');
     }
 
     const response = completion.choices[0];
     const aiResponse = response.message?.content;
     
-    console.log('✅ AI Response length:', aiResponse ? aiResponse.length : 0);
-    console.log('✅ AI Response preview:', aiResponse ? aiResponse.substring(0, 200) + '...' : 'No response');
+    console.log('AI Response length:', aiResponse ? aiResponse.length : 0);
+    console.log('AI Response preview:', aiResponse ? aiResponse.substring(0, 200) + '...' : 'No response');
     
     // 응답 검증
     if (!aiResponse || typeof aiResponse !== 'string' || aiResponse.length < 200) {
-      console.error('❌ Invalid AI response:', aiResponse);
+      console.error('Invalid AI response:', aiResponse);
       throw new Error('Invalid or too short response from OpenAI');
     }
     
-    console.log('✅ AI Insights generated successfully');
+    console.log('AI Insights generated successfully');
     return aiResponse;
     
   } catch (err) {
-    console.error('❌ OpenAI API error:', {
+    console.error('OpenAI API error:', {
       message: err.message,
       status: err.status,
       code: err.code
@@ -595,13 +595,13 @@ Advanced strategic recommendations:
     
     // 구체적인 에러 메시지 반환
     if (err.status === 401) {
-      return '# ⚠️ API Authentication Error\n\nOpenAI API key is invalid. Please contact administrator.';
+      return '# API Authentication Error\n\nOpenAI API key is invalid. Please contact administrator.';
     } else if (err.status === 429) {
-      return '# ⚠️ API Rate Limit Exceeded\n\nAPI usage limit exceeded. Please try again later.';
+      return '# API Rate Limit Exceeded\n\nAPI usage limit exceeded. Please try again later.';
     } else if (err.status === 500) {
-      return '# ⚠️ API Server Error\n\nOpenAI server is temporarily unavailable. Please try again later.';
+      return '# API Server Error\n\nOpenAI server is temporarily unavailable. Please try again later.';
     } else {
-      return `# ⚠️ Analysis Report Generation Failed\n\nTechnical issue prevented AI analysis generation.\n\nError: ${err.message}\n\nPlease analyze the pivot tables manually.`;
+      return `# Analysis Report Generation Failed\n\nTechnical issue prevented AI analysis generation.\n\nError: ${err.message}\n\nPlease analyze the pivot tables manually.`;
     }
   }
 };
@@ -734,8 +734,8 @@ const generatePivotTables = (data, columnMapping) => {
     throw new Error('No data provided for pivot table generation');
   }
 
-  console.log('🔍 generatePivotTables: Input data length:', data.length);
-  console.log('🔍 generatePivotTables: Column mapping:', columnMapping);
+  console.log('generatePivotTables: Input data length:', data.length);
+  console.log('generatePivotTables: Column mapping:', columnMapping);
 
   // Remap columns based on mapping
   const remappedData = data.map(row => {
@@ -748,7 +748,7 @@ const generatePivotTables = (data, columnMapping) => {
     return newRow;
   });
 
-  console.log('🔍 generatePivotTables: Remapped data sample:', remappedData[0]);
+  console.log('generatePivotTables: Remapped data sample:', remappedData[0]);
 
   // 새로운 컬럼 구조에 맞게 수정
   const levels = [
@@ -802,11 +802,11 @@ const generatePivotTables = (data, columnMapping) => {
     // Only add to results if there's actual data
     if (levelData.length > 0) {
       results[level.display] = levelData;
-      console.log(`✅ Generated pivot table for ${level.display}: ${levelData.length} items`);
+      console.log(`Generated pivot table for ${level.display}: ${levelData.length} items`);
     }
   });
   
-  console.log('🔍 generatePivotTables: Final results keys:', Object.keys(results));
+  console.log('generatePivotTables: Final results keys:', Object.keys(results));
   return results;
 };
 
@@ -957,16 +957,16 @@ app.post('/api/mapping/group-and-recommend', async (req, res) => {
       });
     }
 
-    console.log('🔍 === COLUMN GROUPING AND RECOMMENDATION ===');
-    console.log('📊 Input columns:', columns);
-    console.log('🎯 Campaign context:', campaignContext);
-    console.log('🎯 Campaign context type:', typeof campaignContext);
-    console.log('🎯 Campaign context keys:', campaignContext ? Object.keys(campaignContext) : 'null');
-    console.log('🎯 Brand:', campaignContext?.brand);
-    console.log('🎯 Product:', campaignContext?.product);
-    console.log('🎯 Industry:', campaignContext?.industry);
-    console.log('🎯 Target audience:', campaignContext?.target_audience);
-    console.log('🌐 Language:', language);
+    console.log('=== COLUMN GROUPING AND RECOMMENDATION ===');
+    console.log('Input columns:', columns);
+    console.log('Campaign context:', campaignContext);
+    console.log('Campaign context type:', typeof campaignContext);
+    console.log('Campaign context keys:', campaignContext ? Object.keys(campaignContext) : 'null');
+    console.log('Brand:', campaignContext?.brand);
+    console.log('Product:', campaignContext?.product);
+    console.log('Industry:', campaignContext?.industry);
+    console.log('Target audience:', campaignContext?.target_audience);
+    console.log('Language:', language);
 
     // 1단계: 숫자 제거하여 컬럼 그룹화
     const groupedColumns = groupSimilarColumns(columns);
@@ -978,7 +978,7 @@ app.post('/api/mapping/group-and-recommend', async (req, res) => {
         ? '그룹화할 수 있는 컬럼이 없어 추천을 제공할 수 없습니다.\n\n예를 들어, "10% 재생률", "20% 재생률", "30% 재생률"과 같이 숫자만 다른 동일한 성격의 컬럼들이 있을 때 그룹화하여 추천해드립니다.'
         : 'No grouping columns available for recommendations.\n\nFor example, this service groups and recommends columns like "10% play rate", "20% play rate", "30% play rate" where only the numbers differ but the column type is the same.';
       
-      console.log('🔍 No grouped columns found, returning message:', message);
+      console.log('No grouped columns found, returning message:', message);
       
       return res.json({
         success: true,
@@ -991,10 +991,11 @@ app.post('/api/mapping/group-and-recommend', async (req, res) => {
     // 2단계: LLM 기반 컬럼 추천
     const recommendations = await generateColumnRecommendations(groupedColumns, campaignContext, language);
     
-    console.log('🔍 API Response structure:');
+    console.log('API Response structure:');
     console.log('  - groupedColumns:', groupedColumns);
     console.log('  - recommendations:', recommendations);
     console.log('  - recommendations type:', typeof recommendations);
+    console.log('  - recommendations structure:', recommendations);
     
     res.json({
       success: true,
@@ -1013,8 +1014,8 @@ app.post('/api/mapping/group-and-recommend', async (req, res) => {
 
 // 컬럼 그룹화 함수
 const groupSimilarColumns = (columns) => {
-  console.log('🔍 === GROUPING COLUMNS ===');
-  console.log('📊 Original columns:', columns);
+  console.log('=== GROUPING COLUMNS ===');
+  console.log('Original columns:', columns);
   
   const groups = {};
   
@@ -1041,7 +1042,7 @@ const groupSimilarColumns = (columns) => {
     // 3. 공백 정규화
     normalizedColumn = normalizedColumn.replace(/\s+/g, ' ').trim();
     
-    console.log(`🔍 Column: "${column}" -> Normalized: "${normalizedColumn}"`);
+    console.log(`Column: "${column}" -> Normalized: "${normalizedColumn}"`);
     
     if (!groups[normalizedColumn]) {
       groups[normalizedColumn] = [];
@@ -1053,21 +1054,21 @@ const groupSimilarColumns = (columns) => {
     });
   });
   
-  console.log('🔍 All groups before filtering:', groups);
+  console.log('All groups before filtering:', groups);
   
   // 그룹이 2개 이상인 것만 반환
   const result = {};
   Object.entries(groups).forEach(([normalized, items]) => {
     if (items.length > 1) {
       result[normalized] = items;
-      console.log(`🔍 ✅ Group "${normalized}" has ${items.length} items:`, items.map(item => item.original));
+      console.log(`Group "${normalized}" has ${items.length} items:`, items.map(item => item.original));
     } else {
-      console.log(`🔍 ❌ Group "${normalized}" has only ${items.length} item, skipping`);
+      console.log(`Group "${normalized}" has only ${items.length} item, skipping`);
     }
   });
   
-  console.log('🔍 Final grouped columns:', result);
-  console.log('🔍 Number of groups found:', Object.keys(result).length);
+  console.log('Final grouped columns:', result);
+  console.log('Number of groups found:', Object.keys(result).length);
   
   return result;
 };
@@ -1082,25 +1083,25 @@ const generateColumnRecommendations = async (groupedColumns, campaignContext, la
     const isKorean = language === 'ko';
     
     // 프롬프트 생성 전 디버깅
-    console.log('🔍 === PROMPT GENERATION DEBUG ===');
-    console.log('🔍 Campaign context received:', campaignContext);
-    console.log('🔍 Campaign context type:', typeof campaignContext);
-    console.log('🔍 Campaign context keys:', campaignContext ? Object.keys(campaignContext) : 'null');
-    console.log('🔍 Brand:', campaignContext?.brand);
-    console.log('🔍 Product:', campaignContext?.product);
-    console.log('🔍 Industry:', campaignContext?.industry);
-    console.log('🔍 Target audience object:', campaignContext?.target_audience);
-    console.log('🔍 Target audience type:', typeof campaignContext?.target_audience);
-    console.log('🔍 Target audience keys:', campaignContext?.target_audience ? Object.keys(campaignContext.target_audience) : 'null');
-    console.log('🔍 Demographics:', campaignContext?.target_audience?.demographics);
-    console.log('🔍 Characteristics:', campaignContext?.target_audience?.characteristics);
-    console.log('🔍 Description:', campaignContext?.description);
-    console.log('🔍 Analysis reason:', campaignContext?.analysis_reason);
+    console.log('=== PROMPT GENERATION DEBUG ===');
+    console.log('Campaign context received:', campaignContext);
+    console.log('Campaign context type:', typeof campaignContext);
+    console.log('Campaign context keys:', campaignContext ? Object.keys(campaignContext) : 'null');
+    console.log('Brand:', campaignContext?.brand);
+    console.log('Product:', campaignContext?.product);
+    console.log('Industry:', campaignContext?.industry);
+    console.log('Target audience object:', campaignContext?.target_audience);
+    console.log('Target audience type:', typeof campaignContext?.target_audience);
+    console.log('Target audience keys:', campaignContext?.target_audience ? Object.keys(campaignContext.target_audience) : 'null');
+    console.log('Demographics:', campaignContext?.target_audience?.demographics);
+    console.log('Characteristics:', campaignContext?.target_audience?.characteristics);
+    console.log('Description:', campaignContext?.description);
+    console.log('Analysis reason:', campaignContext?.analysis_reason);
     
     const prompt = isKorean ? 
       `당신은 마케팅 데이터 분석 전문가입니다. 동일한 성격의 컬럼들 중에서 가장 적합한 컬럼을 선택하는 것이 당신의 임무입니다.
 
-🎯 **캠페인 컨텍스트 (반드시 고려해야 함):**
+**캠페인 컨텍스트 (반드시 고려해야 함):**
 - 브랜드: ${campaignContext?.brand || '알 수 없음'}
 - 제품: ${campaignContext?.product || '알 수 없음'}
 - 업계: ${campaignContext?.industry || '알 수 없음'}
@@ -1109,7 +1110,7 @@ const generateColumnRecommendations = async (groupedColumns, campaignContext, la
 - 캠페인 설명: ${campaignContext?.description || '알 수 없음'}
 - 분석 근거: ${campaignContext?.analysis_reason || '알 수 없음'}
 
-📋 **분석 규칙 (모든 추천에서 반드시 적용):**
+**분석 규칙 (모든 추천에서 반드시 적용):**
 1. **브랜드 특성 기반 선택**: ${campaignContext?.brand ? `"${campaignContext.brand}" 브랜드의 특성, 이미지, 브랜드 가치를 고려하여 선택하세요.` : '브랜드 특성을 고려하여 선택하세요.'}
 2. **제품 특성 기반 선택**: ${campaignContext?.product ? `"${campaignContext.product}" 제품의 특성, 기능, 사용 목적을 고려하여 선택하세요.` : '제품 특성을 고려하여 선택하세요.'}
 3. **업계 특성 기반 선택**: ${campaignContext?.industry ? `"${campaignContext.industry}" 업계의 표준, 베스트 프랙티스, 경쟁 환경을 고려하여 선택하세요.` : '업계 표준을 고려하여 선택하세요.'}
@@ -1118,9 +1119,9 @@ const generateColumnRecommendations = async (groupedColumns, campaignContext, la
 6. **캠페인 컨텍스트 기반 선택**: ${campaignContext?.description ? `"${campaignContext.description}" 캠페인 설명과 목적을 고려하여 선택하세요.` : '캠페인 컨텍스트를 고려하여 선택하세요.'}
 7. **마케팅 성과 측정의 정확성과 효율성을 고려하세요**
 
-⚠️ **중요**: 모든 추천 근거(reason)에서 반드시 위의 브랜드, 제품, 업계, 타겟 오디언스, 타겟 특성 정보를 구체적으로 언급하고, 왜 그 특성이 해당 컬럼 선택에 영향을 미치는지 설명해야 합니다.
+**중요**: 모든 추천 근거(reason)에서 반드시 위의 브랜드, 제품, 업계, 타겟 오디언스, 타겟 특성 정보를 구체적으로 언급하고, 왜 그 특성이 해당 컬럼 선택에 영향을 미치는지 설명해야 합니다.
 
-📝 **추천 근거 작성 예시**:
+**추천 근거 작성 예시**:
 - Nike 스포츠웨어 브랜드라면: "Nike 브랜드의 스포츠웨어 특성상 사용자 참여도와 브랜드 인지도가 중요한 지표이므로, 'Video played to 100%'가 가장 적합합니다. 스포츠 콘텐츠는 완전한 시청이 브랜드 충성도와 구매 의도에 직접적으로 연결되며, Nike의 젊은 타겟 오디언스는 완전한 경험을 추구하는 경향이 있습니다."
 - 스포츠웨어 업계라면: "스포츠웨어 업계 특성상 제품의 기능성과 성능이 중요하므로, 'Video played to 75%'가 적합합니다. 소비자들은 제품의 핵심 기능을 파악한 후 구매 결정을 내리는 경향이 있으며, 완전한 시청보다는 핵심 정보 전달이 효율적입니다."
 - 젊은 타겟 오디언스라면: "젊은 타겟 오디언스는 짧은 주의집중 시간과 빠른 정보 소비 패턴을 가지므로, 'Video played to 25%'가 더 현실적인 성과 지표입니다. 이들은 짧은 시간 내에 핵심 메시지를 파악하려는 경향이 있어 초기 참여도가 중요합니다."
@@ -1144,7 +1145,7 @@ ${Object.entries(groupedColumns).map(([normalized, items]) => {
 }` :
       `You are a marketing data analysis expert. Your task is to select the most suitable column from columns with similar characteristics.
 
-🎯 **CAMPAIGN CONTEXT (MUST CONSIDER):**
+**CAMPAIGN CONTEXT (MUST CONSIDER):**
 - Brand: ${campaignContext?.brand || 'Unknown'}
 - Product: ${campaignContext?.product || 'Unknown'}
 - Industry: ${campaignContext?.industry || 'Unknown'}
@@ -1153,7 +1154,7 @@ ${Object.entries(groupedColumns).map(([normalized, items]) => {
 - Campaign Description: ${campaignContext?.description || 'Unknown'}
 - Analysis Reason: ${campaignContext?.analysis_reason || 'Unknown'}
 
-📋 **ANALYSIS RULES (MUST APPLY TO ALL RECOMMENDATIONS):**
+**ANALYSIS RULES (MUST APPLY TO ALL RECOMMENDATIONS):**
 1. **Brand-based Selection**: ${campaignContext?.brand ? `Consider the characteristics, image, and brand values of "${campaignContext.brand}" brand when selecting.` : 'Consider brand characteristics when selecting.'}
 2. **Product-based Selection**: ${campaignContext?.product ? `Consider the characteristics, functionality, and usage purpose of "${campaignContext.product}" product when selecting.` : 'Consider product characteristics when selecting.'}
 3. **Industry-based Selection**: ${campaignContext?.industry ? `Consider the standards, best practices, and competitive environment of "${campaignContext.industry}" industry when selecting.` : 'Consider industry standards when selecting.'}
@@ -1162,9 +1163,9 @@ ${Object.entries(groupedColumns).map(([normalized, items]) => {
 6. **Campaign Context-based Selection**: ${campaignContext?.description ? `Consider the campaign description and objectives of "${campaignContext.description}" when selecting.` : 'Consider campaign context when selecting.'}
 7. **Consider accuracy and efficiency of marketing performance measurement**
 
-⚠️ **IMPORTANT**: In every recommendation reason, you MUST specifically mention the above brand, product, industry, target audience, and target characteristics information and explain why these characteristics influence the column selection.
+**IMPORTANT**: In every recommendation reason, you MUST specifically mention the above brand, product, industry, target audience, and target characteristics information and explain why these characteristics influence the column selection.
 
-📝 **RECOMMENDATION REASON EXAMPLES**:
+**RECOMMENDATION REASON EXAMPLES**:
 - If brand is Nike sports apparel: "Given Nike's sports apparel brand characteristics where user engagement and brand awareness are crucial metrics, 'Video played to 100%' is most suitable. Sports content requires complete viewing as it directly correlates with brand loyalty and purchase intent, and Nike's young target audience tends to seek complete experiences."
 - If industry is sports apparel: "Given sports apparel industry characteristics where product functionality and performance are important, 'Video played to 75%' is suitable. Consumers tend to make purchase decisions after understanding core product features, and efficient key information delivery is more effective than complete viewing."
 - If target audience is young demographic: "Young target audiences have short attention spans and fast information consumption patterns, making 'Video played to 25%' a more realistic performance indicator. They tend to grasp key messages quickly, making early engagement crucial."
@@ -1188,10 +1189,10 @@ Respond only in the following JSON format (no other text):
 }`;
 
     // 프롬프트 생성 후 디버깅
-    console.log('🔍 === GENERATED PROMPT DEBUG ===');
-    console.log('🔍 Prompt length:', prompt.length);
-    console.log('🔍 Prompt preview (first 500 chars):', prompt.substring(0, 500));
-    console.log('🔍 Campaign context in prompt:');
+    console.log('=== GENERATED PROMPT DEBUG ===');
+    console.log('Prompt length:', prompt.length);
+    console.log('Prompt preview (first 500 chars):', prompt.substring(0, 500));
+    console.log('Campaign context in prompt:');
     console.log('  - Brand:', campaignContext?.brand || '알 수 없음');
     console.log('  - Product:', campaignContext?.product || '알 수 없음');
     console.log('  - Industry:', campaignContext?.industry || '알 수 없음');
@@ -1288,10 +1289,10 @@ app.post('/api/analysis/campaigns', async (req, res) => {
       });
     }
 
-    console.log('🔍 === CAMPAIGN ANALYSIS API HIT ===');
-    console.log('📁 File ID:', fileId);
-    console.log('🗺️ Column Mapping:', columnMapping);
-    console.log('🌐 Language:', language);
+    console.log('=== CAMPAIGN ANALYSIS API HIT ===');
+    console.log('File ID:', fileId);
+    console.log('Column Mapping:', columnMapping);
+    console.log('Language:', language);
 
     // 파일 데이터 조회
     let fileData = fileStorage.get(fileId);
@@ -1299,7 +1300,7 @@ app.post('/api/analysis/campaigns', async (req, res) => {
     // 데이터셋인 경우 처리
     if (fileId.startsWith('dataset_')) {
       const datasetId = fileId.replace('dataset_', '');
-      console.log('📊 Processing dataset for campaign analysis:', datasetId);
+      console.log('Processing dataset for campaign analysis:', datasetId);
       
       const realData = await readParquetDataset(datasetId);
       const datasetConfigs = {
@@ -1319,14 +1320,14 @@ app.post('/api/analysis/campaigns', async (req, res) => {
     }
     
     if (!fileData) {
-      console.error('❌ File data not found for campaign analysis:', fileId);
+      console.error('File data not found for campaign analysis:', fileId);
       return res.status(404).json({ 
         success: false, 
         error: 'File data not found or expired' 
       });
     }
 
-    console.log('✅ File data found for campaign analysis:', {
+    console.log('File data found for campaign analysis:', {
       fileName: fileData.metadata.fileName,
       rowCount: fileData.data.length
     });
@@ -1334,17 +1335,17 @@ app.post('/api/analysis/campaigns', async (req, res) => {
     // 캠페인 분석 실행
     const campaignAnalysis = await analyzeCampaigns(fileData, columnMapping, language);
     
-    console.log('🔍 === CAMPAIGN ANALYSIS API RESPONSE DEBUG ===');
-    console.log('🔍 Campaign analysis result:', campaignAnalysis);
-    console.log('🔍 Success:', campaignAnalysis.success);
-    console.log('🔍 Brand:', campaignAnalysis.brand);
-    console.log('🔍 Product:', campaignAnalysis.product);
-    console.log('🔍 Industry:', campaignAnalysis.industry);
-    console.log('🔍 Target audience:', campaignAnalysis.target_audience);
-    console.log('🔍 Description:', campaignAnalysis.description);
-    console.log('🔍 Analysis reason:', campaignAnalysis.analysis_reason);
-    console.log('🔍 Confidence:', campaignAnalysis.confidence);
-    console.log('🔍 Total campaigns:', campaignAnalysis.total_campaigns);
+    console.log('=== CAMPAIGN ANALYSIS API RESPONSE DEBUG ===');
+    console.log('Campaign analysis result:', campaignAnalysis);
+    console.log('Success:', campaignAnalysis.success);
+    console.log('Brand:', campaignAnalysis.brand);
+    console.log('Product:', campaignAnalysis.product);
+    console.log('Industry:', campaignAnalysis.industry);
+    console.log('Target audience:', campaignAnalysis.target_audience);
+    console.log('Description:', campaignAnalysis.description);
+    console.log('Analysis reason:', campaignAnalysis.analysis_reason);
+    console.log('Confidence:', campaignAnalysis.confidence);
+    console.log('Total campaigns:', campaignAnalysis.total_campaigns);
     
     if (!campaignAnalysis.success) {
       return res.status(500).json(campaignAnalysis);
@@ -1355,7 +1356,7 @@ app.post('/api/analysis/campaigns', async (req, res) => {
       ...campaignAnalysis
     };
     
-    console.log('🔍 Final API response:', response);
+    console.log('Final API response:', response);
     
     res.json(response);
 
@@ -1371,10 +1372,10 @@ app.post('/api/analysis/campaigns', async (req, res) => {
 
 // 3. 분석 실행 API (피벗테이블, 히트맵만 생성)
 app.post('/api/analysis/execute', async (req, res) => {
-  console.log('🎯 === ANALYSIS EXECUTE API HIT ===');
-  console.log('🎯 Route: /api/analysis/execute');
-  console.log('🎯 Method:', req.method);
-  console.log('🎯 Headers:', {
+  console.log('=== ANALYSIS EXECUTE API HIT ===');
+  console.log('Route: /api/analysis/execute');
+  console.log('Method:', req.method);
+  console.log('Headers:', {
     'x-user-id': req.headers['x-user-id'],
     'content-type': req.headers['content-type'],
     'content-length': req.headers['content-length']
@@ -1384,14 +1385,14 @@ app.post('/api/analysis/execute', async (req, res) => {
     const userId = req.headers['x-user-id'];
     const { fileId, columnMapping, language = 'en' } = req.body;
     
-    console.log('📥 === REQUEST BODY PARSED ===');
-    console.log('👤 User ID:', userId);
-    console.log('📁 File ID:', fileId);
-    console.log('🗺️ Column Mapping:', columnMapping);
-    console.log('🌐 Language:', language);
+    console.log('=== REQUEST BODY PARSED ===');
+    console.log('User ID:', userId);
+    console.log('File ID:', fileId);
+    console.log('Column Mapping:', columnMapping);
+    console.log('Language:', language);
     
     if (!userId) {
-      console.error('❌ No user ID provided');
+      console.error('No user ID provided');
       return res.status(401).json({ 
         success: false, 
         error: 'Authentication required' 
@@ -1399,9 +1400,9 @@ app.post('/api/analysis/execute', async (req, res) => {
     }
     
     if (!fileId || !columnMapping) {
-      console.error('❌ Missing required parameters');
-      console.error('❌ fileId:', fileId);
-      console.error('❌ columnMapping:', columnMapping);
+      console.error('Missing required parameters');
+      console.error('fileId:', fileId);
+      console.error('columnMapping:', columnMapping);
       return res.status(400).json({ 
         success: false, 
         error: 'Missing fileId or columnMapping' 
@@ -1409,13 +1410,13 @@ app.post('/api/analysis/execute', async (req, res) => {
     }
     
     // 파일 데이터 조회 (데이터셋 또는 업로드된 파일)
-    console.log('📁 === FETCHING FILE DATA ===');
+    console.log('=== FETCHING FILE DATA ===');
     let fileData = fileStorage.get(fileId);
     
     // 데이터셋인 경우 처리
     if (fileId.startsWith('dataset_')) {
       const datasetId = fileId.replace('dataset_', '');
-      console.log('📊 Processing dataset:', datasetId);
+      console.log('Processing dataset:', datasetId);
       
       // 실제 parquet 파일에서 데이터 읽기
       const realData = await readParquetDataset(datasetId);
@@ -1436,25 +1437,25 @@ app.post('/api/analysis/execute', async (req, res) => {
     }
     
     if (!fileData) {
-      console.error('❌ File data not found for fileId:', fileId);
-      console.error('❌ Available fileIds:', Array.from(fileStorage.keys()));
+      console.error('File data not found for fileId:', fileId);
+      console.error('Available fileIds:', Array.from(fileStorage.keys()));
       return res.status(404).json({ 
         success: false, 
         error: 'File data not found or expired' 
       });
     }
     
-    console.log('✅ File data found:', {
+    console.log('File data found:', {
       fileName: fileData.metadata.fileName,
       fileSize: fileData.metadata.fileSize,
       rowCount: fileData.data.length,
       columnCount: fileData.data[0] ? Object.keys(fileData.data[0]).length : 0
     });
     
-    console.log('📊 === STEP 1: GENERATING PIVOT TABLES ===');
+    console.log('=== STEP 1: GENERATING PIVOT TABLES ===');
     // 1단계: 피벗 테이블 생성
     const pivotTables = generatePivotTables(fileData.data, columnMapping);
-    console.log('📊 Generated pivotTables:', {
+    console.log('Generated pivotTables:', {
       hasData: !!pivotTables,
       keys: Object.keys(pivotTables || {}),
       campaignCount: pivotTables?.Campaign?.length || 0,
@@ -1462,10 +1463,10 @@ app.post('/api/analysis/execute', async (req, res) => {
       adCount: pivotTables?.Ad?.length || 0
     });
     
-    console.log('🖼️ === STEP 2: GENERATING HEATMAP ===');
+    console.log('=== STEP 2: GENERATING HEATMAP ===');
     // 2단계: 히트맵 생성 (단순 버전)
     const heatmap = generateSimpleHeatmap(pivotTables.Campaign || []);
-    console.log('🖼️ Heatmap generated:', {
+    console.log('Heatmap generated:', {
       hasHeatmap: !!heatmap,
       heatmapLength: heatmap ? heatmap.length : 0
     });
@@ -1474,9 +1475,9 @@ app.post('/api/analysis/execute', async (req, res) => {
     let analysisDoc;
     if (Analysis && mongoose.connection.readyState === 1) {
       try {
-        console.log('📊 Creating analysis document...');
-        console.log('📊 pivotTables structure:', JSON.stringify(pivotTables, null, 2));
-        console.log('📅 Setting createdAt to:', new Date());
+        console.log('Creating analysis document...');
+        console.log('pivotTables structure:', JSON.stringify(pivotTables, null, 2));
+        console.log('Setting createdAt to:', new Date());
         
         analysisDoc = new Analysis({
           userId,
@@ -1498,32 +1499,32 @@ app.post('/api/analysis/execute', async (req, res) => {
           }
         });
         
-        console.log('💾 Saving analysis to database...');
+        console.log('Saving analysis to database...');
         await analysisDoc.save();
-        console.log('✅ Analysis saved to database with ID:', analysisDoc._id);
-        console.log('📅 Final createdAt value:', analysisDoc.createdAt);
+        console.log('Analysis saved to database with ID:', analysisDoc._id);
+        console.log('Final createdAt value:', analysisDoc.createdAt);
       } catch (error) {
-        console.error('❌ Database save failed:', error);
-        console.error('❌ Error details:', error.message);
-        console.error('❌ Error stack:', error.stack);
+        console.error('Database save failed:', error);
+        console.error('Error details:', error.message);
+        console.error('Error stack:', error.stack);
         console.warn('Analysis will be returned without database persistence');
       }
     } else {
-      console.warn('⚠️ Database not available. Analysis will not be persisted.');
+      console.warn('Database not available. Analysis will not be persisted.');
       console.log('MongoDB connection state:', mongoose.connection.readyState);
       console.log('Analysis model available:', !!Analysis);
     }
     
-    console.log('🧹 === CLEANING UP ===');
+    console.log('=== CLEANING UP ===');
     // 임시 파일 데이터 정리 (데이터셋이 아닌 경우에만)
     if (!fileId.startsWith('dataset_')) {
       fileStorage.delete(fileId);
-      console.log('✅ File data cleaned up');
+      console.log('File data cleaned up');
     } else {
-      console.log('📊 Dataset data - no cleanup needed');
+      console.log('Dataset data - no cleanup needed');
     }
     
-    console.log('📤 === SENDING RESPONSE ===');
+    console.log('=== SENDING RESPONSE ===');
     const response = {
       success: true,
       analysisId: analysisDoc?._id || `temp_${Date.now()}`,
@@ -1540,7 +1541,7 @@ app.post('/api/analysis/execute', async (req, res) => {
       }
     };
     
-    console.log('📤 Response structure:', {
+    console.log('Response structure:', {
       success: response.success,
       analysisId: response.analysisId,
       fileName: response.fileName,
@@ -1551,13 +1552,13 @@ app.post('/api/analysis/execute', async (req, res) => {
     });
     
     res.json(response);
-    console.log('✅ Analysis execution completed successfully');
+    console.log('Analysis execution completed successfully');
   } catch (error) {
-    console.error('❌ === ANALYSIS EXECUTION ERROR ===');
-    console.error('❌ Error type:', error.constructor.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
-    console.error('❌ Full error object:', error);
+    console.error('=== ANALYSIS EXECUTION ERROR ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error object:', error);
     
     res.status(500).json({ 
       success: false,
@@ -1569,10 +1570,10 @@ app.post('/api/analysis/execute', async (req, res) => {
 
 // 4. AI 인사이트 생성 API (개선된 버전)
 app.post('/api/analysis/insights', async (req, res) => {
-  console.log('🤖 === AI INSIGHTS API HIT ===');
-  console.log('🤖 Route: /api/analysis/insights');
-  console.log('🤖 Method:', req.method);
-  console.log('🤖 Headers:', {
+  console.log('=== AI INSIGHTS API HIT ===');
+  console.log('Route: /api/analysis/insights');
+  console.log('Method:', req.method);
+  console.log('Headers:', {
     'x-user-id': req.headers['x-user-id'],
     'content-type': req.headers['content-type'],
     'content-length': req.headers['content-length']
@@ -1582,17 +1583,17 @@ app.post('/api/analysis/insights', async (req, res) => {
     const userId = req.headers['x-user-id'];
     const { analysisId, pivotTables, language = 'en' } = req.body;
     
-    console.log('📥 === REQUEST BODY PARSED ===');
-    console.log('👤 User ID:', userId);
-    console.log('📊 Analysis ID:', analysisId);
-    console.log('🌐 Language:', language);
-    console.log('📊 PivotTables received:', pivotTables ? 'Yes' : 'No');
-    console.log('📊 PivotTables keys:', pivotTables ? Object.keys(pivotTables) : 'N/A');
+    console.log('==== REQUEST BODY PARSED ===');
+    console.log('User ID:', userId);
+    console.log('Analysis ID:', analysisId);
+    console.log('Language:', language);
+    console.log('PivotTables received:', pivotTables ? 'Yes' : 'No');
+    console.log('PivotTables keys:', pivotTables ? Object.keys(pivotTables) : 'N/A');
     
     // 데이터 구조 상세 로깅
     if (pivotTables) {
       Object.entries(pivotTables).forEach(([key, value]) => {
-        console.log(`📊 ${key}:`, {
+        console.log(`${key}:`, {
           type: typeof value,
           isArray: Array.isArray(value),
           length: Array.isArray(value) ? value.length : 'N/A',
@@ -1602,7 +1603,7 @@ app.post('/api/analysis/insights', async (req, res) => {
     }
     
     if (!userId) {
-      console.error('❌ No user ID provided');
+      console.error('No user ID provided');
       return res.status(401).json({ 
         success: false, 
         error: 'Authentication required' 
@@ -1610,7 +1611,7 @@ app.post('/api/analysis/insights', async (req, res) => {
     }
     
     if (!analysisId) {
-      console.error('❌ No analysis ID provided');
+      console.error('No analysis ID provided');
       return res.status(400).json({ 
         success: false, 
         error: 'Analysis ID is required' 
@@ -1618,7 +1619,7 @@ app.post('/api/analysis/insights', async (req, res) => {
     }
     
     if (!pivotTables || typeof pivotTables !== 'object') {
-      console.error('❌ Invalid pivot tables data:', pivotTables);
+      console.error('Invalid pivot tables data:', pivotTables);
       return res.status(400).json({ 
         success: false, 
         error: 'Valid pivot tables data is required' 
@@ -1631,17 +1632,17 @@ app.post('/api/analysis/insights', async (req, res) => {
     );
     
     if (!hasValidData) {
-      console.error('❌ No valid data in pivot tables');
+      console.error('No valid data in pivot tables');
       return res.status(400).json({ 
         success: false, 
         error: 'No valid data found in pivot tables' 
       });
     }
     
-    console.log('🤖 === GENERATING AI INSIGHTS ===');
+    console.log('=== GENERATING AI INSIGHTS ===');
     const insights = await generateAIInsights(pivotTables, language);
     
-    console.log('✅ AI Insights generated:', {
+    console.log('AI Insights generated:', {
       type: typeof insights,
       length: insights ? insights.length : 0,
       isString: typeof insights === 'string',
@@ -1652,7 +1653,7 @@ app.post('/api/analysis/insights', async (req, res) => {
     // 데이터베이스에 인사이트 저장
     if (Analysis && mongoose.connection.readyState === 1) {
       try {
-        console.log('💾 Saving insights to database...');
+        console.log('Saving insights to database...');
         const updateResult = await Analysis.findOneAndUpdate(
           { _id: analysisId, userId },
           { 
@@ -1664,19 +1665,19 @@ app.post('/api/analysis/insights', async (req, res) => {
         );
         
         if (updateResult) {
-          console.log('✅ Insights saved to database');
+          console.log('Insights saved to database');
         } else {
-          console.warn('⚠️ Analysis not found for update, but continuing...');
+          console.warn('Analysis not found for update, but continuing...');
         }
       } catch (error) {
-        console.error('❌ Failed to save insights to database:', error);
+        console.error('Failed to save insights to database:', error);
         console.warn('Insights will be returned without database persistence');
       }
     } else {
-      console.warn('⚠️ Database not available. Insights will not be persisted.');
+      console.warn('Database not available. Insights will not be persisted.');
     }
     
-    console.log('📤 === SENDING INSIGHTS RESPONSE ===');
+    console.log('=== SENDING INSIGHTS RESPONSE ===');
     const response = {
       success: true,
       analysisId,
@@ -1690,7 +1691,7 @@ app.post('/api/analysis/insights', async (req, res) => {
       }
     };
     
-    console.log('📤 Insights response structure:', {
+    console.log('Insights response structure:', {
       success: response.success,
       analysisId: response.analysisId,
       hasInsights: !!response.insights,
@@ -1699,12 +1700,12 @@ app.post('/api/analysis/insights', async (req, res) => {
     });
     
     res.json(response);
-    console.log('✅ AI Insights generation completed successfully');
+    console.log('AI Insights generation completed successfully');
   } catch (error) {
-    console.error('❌ === AI INSIGHTS GENERATION ERROR ===');
-    console.error('❌ Error type:', error.constructor.name);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
+    console.error('=== AI INSIGHTS GENERATION ERROR ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
     res.status(500).json({ 
       success: false,
@@ -1859,7 +1860,7 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
     if (Analysis && mongoose.connection.readyState === 1) {
       try {
         console.log('Saving to database...');
-        console.log('📅 Setting createdAt to:', new Date());
+        console.log('Setting createdAt to:', new Date());
         analysisDoc = new Analysis({
           userId,
           fileName: originalname,
@@ -1882,14 +1883,14 @@ app.post('/api/upload-analyze', upload.single('file'), async (req, res) => {
 
         await analysisDoc.save();
         console.log('Successfully saved to database with ID:', analysisDoc._id);
-        console.log('📅 Final createdAt value:', analysisDoc.createdAt);
+        console.log('Final createdAt value:', analysisDoc.createdAt);
       } catch (error) {
-        console.error('❌ Database save failed:', error);
+        console.error('Database save failed:', error);
         // 데이터베이스 저장 실패 시에도 응답은 반환하되, 경고 추가
         console.warn('Analysis will be returned without database persistence');
       }
     } else {
-      console.warn('⚠️ Database not available. Analysis will not be persisted.');
+      console.warn('Database not available. Analysis will not be persisted.');
       console.log('MongoDB connection state:', mongoose.connection.readyState);
       console.log('Analysis model available:', !!Analysis);
     }
@@ -1999,7 +2000,7 @@ app.delete('/api/analyses/:id', async (req, res) => {
       });
     }
 
-    console.log('✅ Analysis deleted:', id);
+    console.log('Analysis deleted:', id);
     res.json({
       success: true,
       message: 'Analysis deleted successfully'
@@ -2067,7 +2068,7 @@ app.patch('/api/analyses/:id', async (req, res) => {
       });
     }
 
-    console.log('✅ Analysis renamed:', id, 'to:', fileName.trim());
+    console.log('Analysis renamed:', id, 'to:', fileName.trim());
     res.json({
       success: true,
       analysis: {
@@ -2125,7 +2126,7 @@ app.get('/api/analysis/:id', async (req, res) => {
       });
     }
 
-    console.log('📊 Retrieved analysis:', {
+    console.log('Retrieved analysis:', {
       id: analysis._id,
       fileName: analysis.fileName,
       pivotDataLength: analysis.pivotData ? Object.keys(analysis.pivotData).length : 0,
@@ -2263,7 +2264,7 @@ app.post('/api/analysis/save', async (req, res) => {
       });
     }
 
-    console.log('✅ Analysis saved:', analysisId);
+    console.log('Analysis saved:', analysisId);
     res.json({
       success: true,
       analysis: {
@@ -2288,12 +2289,12 @@ app.get('/api/analysis/list', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     
-    console.log('🔍 /api/analysis/list called');
+    console.log('/api/analysis/list called');
     console.log('Headers:', req.headers);
     console.log('User ID:', userId);
     
     if (!userId) {
-      console.log('❌ No user ID provided');
+      console.log('No user ID provided');
       return res.status(401).json({ 
         success: false, 
         error: 'User ID is required' 
@@ -2302,19 +2303,19 @@ app.get('/api/analysis/list', async (req, res) => {
 
     // Check if Analysis model and database are available
     if (!Analysis || mongoose.connection.readyState !== 1) {
-      console.log('❌ Database not available');
+      console.log('Database not available');
       return res.json({
         success: true,
         analyses: []
       });
     }
 
-    console.log('✅ Fetching analyses for user:', userId);
+    console.log('Fetching analyses for user:', userId);
     const analyses = await Analysis.find({ userId })
       .sort({ createdAt: -1 })
       .select('_id fileName fileSize createdAt updatedAt status');
 
-    console.log('✅ Found', analyses.length, 'analyses');
+    console.log('Found', analyses.length, 'analyses');
 
     res.json({
       success: true,
@@ -2328,7 +2329,7 @@ app.get('/api/analysis/list', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('❌ Error fetching analyses:', error);
+    console.error('Error fetching analyses:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch analyses',
@@ -2341,7 +2342,7 @@ app.get('/api/analysis/list', async (req, res) => {
 
 // Debug middleware for chat routes
 app.use('/api/chat/*', (req, res, next) => {
-  console.log('🔍 Chat route debug:', {
+  console.log('Chat route debug:', {
     method: req.method,
     url: req.url,
     path: req.path,
@@ -2471,7 +2472,7 @@ app.get('/api/chat/:analysisId', async (req, res) => {
 
 // Save chat history for an analysis
 app.post('/api/chat/:analysisId', async (req, res) => {
-  console.log('🎯 HIT: /api/chat/:analysisId route with analysisId:', req.params.analysisId);
+  console.log('HIT: /api/chat/:analysisId route with analysisId:', req.params.analysisId);
   try {
     const userId = req.headers['x-user-id'];
     const { analysisId } = req.params;
@@ -2491,7 +2492,7 @@ app.post('/api/chat/:analysisId', async (req, res) => {
       });
     }
 
-    console.log('💾 Saving chat history for:', { userId, analysisId, messageCount: messages.length });
+    console.log('Saving chat history for:', { userId, analysisId, messageCount: messages.length });
 
     // Check if Chat model and database are available
     if (!Chat || mongoose.connection.readyState !== 1) {
@@ -2513,7 +2514,7 @@ app.post('/api/chat/:analysisId', async (req, res) => {
       }
     );
 
-    console.log('✅ Chat history saved successfully');
+    console.log('Chat history saved successfully');
     res.json({
       success: true,
       message: 'Chat history saved successfully'
@@ -2718,125 +2719,6 @@ app.post('/api/datasets/process', async (req, res) => {
   }
 });
 
-// Generate mock data for datasets
-const generateMockDataForDataset = (datasetId) => {
-  const mockData = {
-    'campaign_data': [
-      {
-        campaign_id: 'CAMP001',
-        campaign_name: 'Summer Sale Campaign',
-        campaign_status: 'ACTIVE',
-        budget: 5000,
-        spend: 3200,
-        impressions: 150000,
-        clicks: 4500,
-        ctr: '3.0%',
-        cpc: 0.71,
-        cpm: 21.33
-      },
-      {
-        campaign_id: 'CAMP002',
-        campaign_name: 'Brand Awareness',
-        campaign_status: 'ACTIVE',
-        budget: 3000,
-        spend: 2800,
-        impressions: 200000,
-        clicks: 3200,
-        ctr: '1.6%',
-        cpc: 0.88,
-        cpm: 14.00
-      },
-      {
-        campaign_id: 'CAMP003',
-        campaign_name: 'Product Launch',
-        campaign_status: 'PAUSED',
-        budget: 8000,
-        spend: 6500,
-        impressions: 300000,
-        clicks: 8900,
-        ctr: '3.0%',
-        cpc: 0.73,
-        cpm: 21.67
-      }
-    ],
-    'adpack_data': [
-      {
-        adpack_id: 'ADP001',
-        campaign_id: 'CAMP001',
-        ad_name: 'Summer Sale Banner',
-        ad_status: 'ACTIVE',
-        spend: 1200,
-        impressions: 50000,
-        clicks: 1800,
-        ctr: '3.6%',
-        cpc: 0.67,
-        cpm: 24.00,
-        conversions: 45
-      },
-      {
-        adpack_id: 'ADP002',
-        campaign_id: 'CAMP001',
-        ad_name: 'Summer Sale Video',
-        ad_status: 'ACTIVE',
-        spend: 2000,
-        impressions: 100000,
-        clicks: 2700,
-        ctr: '2.7%',
-        cpc: 0.74,
-        cpm: 20.00,
-        conversions: 67
-      },
-      {
-        adpack_id: 'ADP003',
-        campaign_id: 'CAMP002',
-        ad_name: 'Brand Video',
-        ad_status: 'ACTIVE',
-        spend: 2800,
-        impressions: 200000,
-        clicks: 3200,
-        ctr: '1.6%',
-        cpc: 0.88,
-        cpm: 14.00,
-        conversions: 89
-      }
-    ]
-  };
-
-  return mockData[datasetId] || [];
-};
-
-// Generate column mapping for datasets
-const generateColumnMappingForDataset = (datasetId) => {
-  const mappings = {
-    'campaign_data': {
-      campaign: 'campaign_name',
-      spend: 'cost',
-      impressions: 'impressions',
-      clicks: 'clicks',
-      ctr: 'ctr',
-      cpc: 'cpc',
-      cpm: 'cpm',
-      budget: 'budget',
-      status: 'campaign_status'
-    },
-    'adpack_data': {
-      campaign: 'campaign_name',
-      adpack_id: 'ad_pack_id',
-      ad_name: 'ad_name',
-      spend: 'cost',
-      impressions: 'impressions',
-      clicks: 'clicks',
-      ctr: 'ctr',
-      cpc: 'cpc',
-      cpm: 'cpm',
-      conversions: 'orders',
-      status: 'ad_status'
-    }
-  };
-
-  return mappings[datasetId] || {};
-};
-
 // ===== END DATASET API ENDPOINTS =====
 
 // Error handling middleware
@@ -2865,16 +2747,16 @@ app.use((req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 Marketing Analyzer Backend running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔑 OpenAI API: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Missing (using fallback)'}`);
-  console.log(`📁 Max file size: ${process.env.MAX_FILE_SIZE || '10MB'}`);
-  console.log(`🗄️ Database: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Not connected'}`);
+  console.log(`Marketing Analyzer Backend running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`OpenAI API: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Missing (using fallback)'}`);
+  console.log(`Max file size: ${process.env.MAX_FILE_SIZE || '10MB'}`);
+  console.log(`Database: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Not connected'}`);
 });
 
 // OpenAI API 테스트 엔드포인트
 app.post('/api/test-openai', async (req, res) => {
-  console.log('🧪 === OPENAI API TEST ===');
+  console.log('=== OPENAI API TEST ===');
   
   try {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -2886,7 +2768,7 @@ app.post('/api/test-openai', async (req, res) => {
       });
     }
     
-    console.log('🔑 Testing OpenAI API with key:', OPENAI_API_KEY.substring(0, 7) + '...');
+    console.log('Testing OpenAI API with key:', OPENAI_API_KEY.substring(0, 7) + '...');
     
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -2906,7 +2788,7 @@ app.post('/api/test-openai', async (req, res) => {
     
     const response = completion.choices[0].message.content;
     
-    console.log('✅ OpenAI API test successful:', response);
+    console.log('OpenAI API test successful:', response);
     
     res.json({
       success: true,
@@ -2916,7 +2798,7 @@ app.post('/api/test-openai', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('❌ OpenAI API test failed:', error);
+    console.error('OpenAI API test failed:', error);
     
     res.status(500).json({
       success: false,
@@ -2928,30 +2810,6 @@ app.post('/api/test-openai', async (req, res) => {
   }
 });
 
-// BigInt를 일반 숫자로 변환하는 함수
-const convertBigInts = (obj) => {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-  
-  if (typeof obj === 'bigint') {
-    return Number(obj);
-  }
-  
-  if (Array.isArray(obj)) {
-    return obj.map(convertBigInts);
-  }
-  
-  if (typeof obj === 'object') {
-    const converted = {};
-    for (const [key, value] of Object.entries(obj)) {
-      converted[key] = convertBigInts(value);
-    }
-    return converted;
-  }
-  
-  return obj;
-};
 
 // Campaign analysis with LLM
 const analyzeCampaigns = async (fileData, columnMapping, language = 'en') => {
@@ -2988,7 +2846,7 @@ const analyzeCampaigns = async (fileData, columnMapping, language = 'en') => {
       };
     }
 
-    console.log(`🔍 Found campaign column: ${campaignColumn}`);
+    console.log(`Found campaign column: ${campaignColumn}`);
 
     // 2단계: 유니크한 캠페인명 추출 및 전처리
     const rawCampaignNames = fileData.data
@@ -3106,9 +2964,9 @@ const analyzeCampaigns = async (fileData, columnMapping, language = 'en') => {
       };
     }
 
-    console.log(`🔍 Raw campaign names:`, rawCampaignNames);
-    console.log(`🔍 Processed campaign names:`, processedCampaignNames);
-    console.log(`🔍 Analyzing ${processedCampaignNames.length} processed terms to identify single brand/product:`, processedCampaignNames);
+    console.log(`Raw campaign names:`, rawCampaignNames);
+    console.log(`Processed campaign names:`, processedCampaignNames);
+    console.log(`Analyzing ${processedCampaignNames.length} processed terms to identify single brand/product:`, processedCampaignNames);
 
     const isKorean = language === 'ko';
     const prompt = isKorean ? 
@@ -3221,7 +3079,7 @@ Provide analysis only in the following JSON format (no other text):
 
     const responseText = completion.choices[0].message.content;
     
-    console.log('🤖 Raw LLM response:', responseText);
+    console.log('Raw LLM response:', responseText);
     
     // Clean and parse JSON response
     const cleanText = responseText.replace(/```json\n?|```\n?/g, '').trim();
@@ -3230,8 +3088,8 @@ Provide analysis only in the following JSON format (no other text):
     try {
       analysisResult = JSON.parse(cleanText);
     } catch (parseError) {
-      console.error('❌ JSON parsing failed:', parseError);
-      console.error('❌ Clean text:', cleanText);
+      console.error('JSON parsing failed:', parseError);
+      console.error('Clean text:', cleanText);
       
       // Fallback: create basic analysis
       analysisResult = {
@@ -3252,11 +3110,11 @@ Provide analysis only in the following JSON format (no other text):
 
     // Validate and clean up the analysis
     if (!analysisResult.brand || !analysisResult.product) {
-      console.error('❌ 잘못된 분석 구조');
+      console.error('잘못된 분석 구조');
       throw new Error('LLM에서 잘못된 분석 구조가 반환되었습니다');
     }
 
-    console.log('✅ Campaign analysis completed:', {
+    console.log('Campaign analysis completed:', {
       brand: analysisResult.brand,
       product: analysisResult.product,
       industry: analysisResult.industry,
@@ -3270,7 +3128,7 @@ Provide analysis only in the following JSON format (no other text):
     };
 
   } catch (error) {
-    console.error('❌ Campaign analysis failed:', error);
+    console.error('Campaign analysis failed:', error);
     return {
       success: false,
       error: '캠페인 분석에 실패했습니다',
